@@ -10,11 +10,11 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def render(settings, root=ROOT):
     required = {'namespace', 'image', 'provider', 'model', 'timezone', 'storage_class', 'storage_size', 'secret_name'}
-    if set(settings) != required or not all(isinstance(v, str) for v in settings.values()):
+    if not required.issubset(settings) or set(settings) - required - {'image_pull_secret'} or not all(isinstance(v, str) for v in settings.values()):
         raise ValueError('settings must contain exactly the documented string fields')
     if 'REQUIRED_' in json.dumps(settings):
         raise ValueError('fill required deployment values first')
-    for key in ['namespace', 'secret_name']:
+    for key in ['namespace', 'secret_name'] + (['image_pull_secret'] if settings.get('image_pull_secret') else []):
         if len(settings[key]) > 63 or not re.fullmatch(r'[a-z0-9](?:[a-z0-9-]*[a-z0-9])?', settings[key]):
             raise ValueError('invalid Kubernetes name: ' + key)
     if not re.fullmatch(r'[A-Za-z0-9./_:-]+@sha256:[0-9a-f]{64}', settings['image']):
@@ -80,6 +80,8 @@ def render(settings, root=ROOT):
                                 {'name': 'managed', 'configMap': {'name': 'hermes-managed'}},
                                 {'name': 'tmp', 'emptyDir': {'sizeLimit': '1Gi'}},
                                 {'name': 'private', 'secret': {'secretName': 'hermes-profile', 'defaultMode': 288}}]}}}}
+    if settings.get('image_pull_secret'):
+        deployment['spec']['template']['spec']['imagePullSecrets'] = [{'name': settings['image_pull_secret']}]
     objects = [
         {'apiVersion': 'v1', 'kind': 'Namespace', 'metadata': {'name': ns}},
         {'apiVersion': 'v1', 'kind': 'PersistentVolumeClaim', 'metadata': metadata('hermes-data'), 'spec': pvc_spec},

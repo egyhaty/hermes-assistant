@@ -20,4 +20,6 @@ The Docker Hub custom image in docs/build-receipts/runtime-tested-image.json ran
 
 Codex sandbox attempt failed: `bwrap: No permissions to create a new namespace`. Execution remains blocked; no privilege escalation, seccomp relaxation or sandbox bypass was used. A separately reviewed compatible worker is needed before enabling execution.
 
-The independent repository build succeeded: https://github.com/egyhaty/hermes-assistant/actions/runs/40230687787 . Its GHCR digest is recorded separately. Subscription OAuth login is awaiting owner approval. No gateway/poller is active.
+The independent repository build succeeded: https://github.com/egyhaty/hermes-assistant/actions/runs/40230687787 . Its GHCR digest is recorded separately. Subscription OAuth login succeeded and was confirmed as logged in inside Kubernetes. The account model catalog includes gpt-6.1-sol; it is selected for the final configuration. Device code sign-in was enabled at the owner's request. No gateway/poller is active.
+
+Final dependency cleanup build: https://github.com/egyhaty/hermes-assistant/actions/runs/40232927089 . It removes pip's vulnerable vendor inventory instead of suppressing scan results, and records the actual release version in package metadata. Private registry access and Telegram credentials remain missing; no gateway has been activated.
