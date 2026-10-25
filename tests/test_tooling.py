@@ -185,7 +185,7 @@ class DeploymentTests(unittest.TestCase):
     def settings(self):
         result = json.loads((ROOT / 'config/deployment.example.json').read_text())
         result.update(image='registry.example.test/hermes@sha256:' + 'a' * 64,
-                      provider='fixture-provider', model='fixture-model')
+                      provider='openai-codex', model='fixture-model')
         return result
 
     def test_stopped_manifest_has_persistence_and_no_cluster_credentials(self):
@@ -204,7 +204,7 @@ class DeploymentTests(unittest.TestCase):
     def test_placeholders_tags_and_bad_names_rejected(self):
         with self.assertRaises(ValueError):
             render.render(json.loads((ROOT / 'config/deployment.example.json').read_text()))
-        for key, value in [('image', 'hermes:latest'), ('namespace', '../default'), ('storage_size', '0Gi')]:
+        for key, value in [('image', 'hermes:latest'), ('namespace', '../default'), ('storage_size', '0Gi'), ('provider', 'openai')]:
             settings = self.settings()
             settings[key] = value
             with self.subTest(key=key), self.assertRaises(ValueError):

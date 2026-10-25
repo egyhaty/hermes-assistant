@@ -1,7 +1,7 @@
 {
   "namespace": "hermes",
   "image": "REQUIRED_REGISTRY_IMAGE@sha256:REQUIRED_DIGEST",
-  "provider": "REQUIRED_PROVIDER",
+  "provider": "openai-codex",
   "model": "REQUIRED_MODEL",
   "timezone": "Africa/Cairo",
   "storage_class": "",

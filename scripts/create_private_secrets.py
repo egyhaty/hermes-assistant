@@ -21,6 +21,8 @@ if __name__=='__main__':
     credentials=json.loads(a.credentials.read_text())
     if not isinstance(credentials,dict) or not all(isinstance(k,str) and re.fullmatch('[A-Z][A-Z0-9_]*',k) and isinstance(v,str) and v for k,v in credentials.items()):
         p.error('Credentials must be a JSON object of nonempty environment strings')
+    if set(credentials) != {'TELEGRAM_BOT_TOKEN','TELEGRAM_ALLOWED_USERS'}:
+        p.error('Subscription-only policy: Secret must contain exactly the two Telegram keys; no API keys')
     users=credentials.get('TELEGRAM_ALLOWED_USERS','')
     if not users or not all(u.strip().isdigit() and int(u.strip())>0 for u in users.split(',')) or not credentials.get('TELEGRAM_BOT_TOKEN'):
         p.error('Telegram bot token and positive numeric owner allowlist are required')

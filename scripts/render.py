@@ -21,7 +21,9 @@ def render(settings, root=ROOT):
         raise ValueError('image must be pinned by sha256 digest')
     if not re.fullmatch(r'[1-9][0-9]*(?:Gi|Mi)', settings['storage_size']):
         raise ValueError('storage_size must be a positive Mi or Gi quantity')
-    if not settings['provider'].strip() or not settings['model'].strip():
+    if settings['provider'] != 'openai-codex':
+        raise ValueError('owner policy requires ChatGPT subscription provider openai-codex; no paid API fallback')
+    if not settings['model'].strip():
         raise ValueError('provider and model must be chosen explicitly')
     ZoneInfo(settings['timezone'])
     ns = settings['namespace']

@@ -1,8 +1,9 @@
 {
-  "hermes_base_image": "nousresearch/hermes-agent@sha256:648e4daf033bf2de209435fd9dd61ee3e11103c1f7e1ab469bffbfb99acc263f",
-  "hermes_revision": "90194c64ff99933ec3b9ecfd9295b06e6c11e038",
+  "hermes_base_image": "nousresearch/hermes-agent@sha256:fd822bae0a61bf023450737edbeaeea5fc6460f17cb4ee240a7e67b306ed63fb",
+  "hermes_revision": "bf0203a794a07aac3ff764972ab9087baa4e4f4e",
   "codex_version": "0.164.0",
   "codex_npm_integrity": "sha512-TWj7UGyPRe3Pj/A3ddNAxs1te3a/W/xAd+J0LHrrFTmsSfahGMOLF/vn88D3QCIgAT3B1rm1y/Z3NYE0rx6cZQ==",
   "verified_at": "2026-10-25",
-  "provenance": "Official Docker Hub repository, registry digest and OCI revision label; no signature verified"
+  "provenance": "Official Docker Hub v0.22.5 amd64 manifest; annotated release tag resolves to recorded revision. Tag is unsigned; image has no OCI revision label.",
+  "hermes_release": "v0.22.5"
 }
