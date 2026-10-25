@@ -8,9 +8,9 @@
   "spec": {
     "project": "default",
     "source": {
-      "repoURL": "https://github.com/egyhaty/karm-devops.git",
-      "targetRevision": "fa89e50b2cf830b14e41d9d53a7f35668a0717c9",
-      "path": "infrastructure/hermes/k8s/foundation"
+      "repoURL": "git@github.com:egyhaty/hermes-assistant.git",
+      "targetRevision": "a61208eba5b7e58e198cdc109c3e56a7409e6349",
+      "path": "k8s/foundation"
     },
     "destination": {
       "server": "https://kubernetes.default.svc",

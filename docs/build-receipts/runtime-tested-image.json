@@ -1,0 +1,5 @@
+{
+  "image": "egyhaty/hermes-karem@sha256:4a4218c01411ea4c39f8263b7f92e42848fe2305dd718b3c40a4ca2d0dc6287f",
+  "revision": "404b00f861b5e8abe4e2aeaee4bdfd61cfd4ad40",
+  "runtime_acceptance": "pending Kubernetes tests"
+}

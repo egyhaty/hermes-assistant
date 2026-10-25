@@ -1,17 +1,9 @@
-# Integration with karm-devops
+# Independent GitOps repository
 
-Read-only review on 25 October 2026 found:
+Source: https://github.com/egyhaty/hermes-assistant (private). Do not add Hermes files to karm-devops. The existing Kubernetes cluster is reused only as the runtime platform.
 
-- `argocd/app-of-apps.yaml` tracks `main`, watches `argocd/apps`, and enables automated sync, pruning and self-healing.
-- `storage/longhorn` and Argo applications for Longhorn/backups exist. Their presence in the repository does not prove that live storage or backup restore is healthy.
-- `sealed-secrets` exists in the repository. Use its established deployment conventions after reading its current instructions; no new private key or sealed secret has been generated here.
+Argo uses a repository-specific read-only SSH deploy key, stored only in its hermes-repository Secret. The foundation Application is manual-sync, pinned to an exact commit, without a deletion finalizer. It owns the restricted namespace, retained Longhorn PVC and deny-ingress policy. Do not delete the PVC when moving application paths.
 
-## Proposed path
+Render the final gateway manifests under deploy only after choosing an available subscription model and immutable runtime image. Keep the gateway at zero replicas until Telegram owner allowlist, owner OAuth and live acceptance are ready. Keep credentials outside git; profile is a separate mounted Secret. No automated scheduling or paid provider fallback is enabled.
 
-Copy this project under `infrastructure/hermes` on a review branch, respecting the repository's current contribution instructions. Keep generated private files excluded. Build/test the image through a selected CI build path. Once the real image/provider/storage choices are reviewed, render to `infrastructure/hermes/deploy/manifest.json` and commit only that non-secret output along with the sources.
-
-Keep `k8s/hermes.application.example.yaml` outside `argocd/apps` while preparing. It has a deliberate unresolved revision and manual sync. Set targetRevision to an actual reviewed commit before making it an active Application. The generated Deployment remains replicas zero at first. Avoid committing an example application into a parent application's watched directory.
-
-Before rollout, verify actual kube context, Secret, StorageClass/PVC behavior, CNI enforcement, source image and live acceptance. Then introduce a reviewed child Application through the normal PR flow. Do not enable automatic pruning of the PVC or introduce an Application deletion finalizer without an explicit data-retention decision.
-
-No change to karm-devops, branch, PR, Argo Application or live Kubernetes resource has been made during preparation. This project is currently a separate source bundle ready for review/import, not an integrated deployment.
+The initial integration PR in karm-devops was closed and its remote branch deleted at the owner's request. All current source and future image builds belong to this repository.

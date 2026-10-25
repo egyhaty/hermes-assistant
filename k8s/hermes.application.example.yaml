@@ -8,9 +8,9 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/egyhaty/karm-devops.git
+    repoURL: git@github.com:egyhaty/hermes-assistant.git
     targetRevision: REPLACE_REVIEWED_COMMIT
-    path: infrastructure/hermes/deploy
+    path: deploy
     directory:
       recurse: false
       include: manifest.json
