@@ -9,8 +9,8 @@
     "project": "default",
     "source": {
       "repoURL": "git@github.com:egyhaty/hermes-assistant.git",
-      "targetRevision": "a61208eba5b7e58e198cdc109c3e56a7409e6349",
-      "path": "k8s/foundation"
+      "targetRevision": "76f5e5ce8d566ab48a8289174f69e25fd806f010",
+      "path": "deploy"
     },
     "destination": {
       "server": "https://kubernetes.default.svc",
