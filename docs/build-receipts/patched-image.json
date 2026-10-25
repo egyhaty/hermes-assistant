@@ -1,0 +1,5 @@
+{
+  "image": "ghcr.io/egyhaty/hermes-assistant@sha256:4f77ed4bfdf172768b4d7d9bdae66dd87053104a17e60faba5b932b8454ac28c",
+  "revision": "1c7e75f1760bce97eba2a86c36ed0196650de83c",
+  "runtime_acceptance": "pending Kubernetes tests"
+}
