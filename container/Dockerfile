@@ -14,7 +14,7 @@ RUN rm -rf /opt/hermes/tools/python-3.14.9+20261021-linux-x64/lib/python3.14/sit
     /opt/hermes/tools/python-3.14.9+20261021-linux-x64/lib/python3.14/site-packages/pip-26.2.2.dist-info
 # Upstream exports placeholder distribution metadata although the CLI/release
 # is v0.22.5. Record the real, verified release in that metadata.
-RUN python3 -c 'from pathlib import Path; p=Path("/opt/hermes/hermes_agent-0.0.0.dist-info/METADATA"); s=p.read_text(); assert "Version: 0.0.0\n" in s; p.write_text(s.replace("Version: 0.0.0\n","Version: 0.22.5\n",1)); p.parent.rename(p.parent.with_name("hermes_agent-0.22.5.dist-info"))'
+RUN python3 -c 'import shutil; from pathlib import Path; p=Path("/opt/hermes/hermes_agent-0.0.0.dist-info/METADATA"); s=p.read_text(); assert "Version: 0.0.0\n" in s; p.write_text(s.replace("Version: 0.0.0\n","Version: 0.22.5\n",1)); shutil.move(str(p.parent),str(p.parent.with_name("hermes_agent-0.22.5.dist-info")))'
 ARG CODEX_VERSION
 RUN test -n "$CODEX_VERSION" && npm install --prefix /usr/local -g "@openai/codex@${CODEX_VERSION}" && npm cache clean --force
 COPY --chown=0:0 config/SOUL.md /opt/karem/config/SOUL.md
