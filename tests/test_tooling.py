@@ -199,6 +199,9 @@ class DeploymentTests(unittest.TestCase):
         self.assertEqual(deployment['spec']['strategy']['type'], 'Recreate')
         pod = deployment['spec']['template']['spec']
         self.assertFalse(pod['automountServiceAccountToken'])
+        self.assertEqual(pod['containers'][0]['volumeMounts'][0]['subPath'], 'hermes-home')
+        self.assertEqual(pod['initContainers'][0]['securityContext']['capabilities']['drop'], ['ALL'])
+        self.assertFalse(pod['initContainers'][0]['securityContext']['allowPrivilegeEscalation'])
         self.assertTrue(pod['securityContext']['runAsNonRoot'])
         self.assertTrue(pod['containers'][0]['securityContext']['readOnlyRootFilesystem'])
         self.assertTrue(any('persistentVolumeClaim' in v for v in pod['volumes']))

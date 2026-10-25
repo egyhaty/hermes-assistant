@@ -16,7 +16,7 @@ def manifest(image):
             'env':[{'name':'HOME','value':'/opt/data'},{'name':'HERMES_HOME','value':'/opt/data'},{'name':'PYTHONDONTWRITEBYTECODE','value':'1'}],
             'securityContext':{'allowPrivilegeEscalation':False,'readOnlyRootFilesystem':True,'capabilities':{'drop':['ALL']}},
             'resources':{'requests':{'cpu':'100m','memory':'512Mi'},'limits':{'cpu':'2','memory':'4Gi'}},
-            'volumeMounts':[{'name':'data','mountPath':'/opt/data'},{'name':'tmp','mountPath':'/tmp'}]}],
+            'volumeMounts':[{'name':'data','mountPath':'/opt/data','subPath':'hermes-home'},{'name':'tmp','mountPath':'/tmp'}]}],
         'volumes':[{'name':'data','persistentVolumeClaim':{'claimName':'hermes-data'}},{'name':'tmp','emptyDir':{'sizeLimit':'1Gi'}}]}}
 
 if __name__ == '__main__':

@@ -22,3 +22,9 @@ config/deployment.json and deploy/manifest.json use the final private GHCR image
 - Telegram bot token and positive numeric owner allowlist must be entered locally using scripts/configure_telegram.py; never paste the token into chat.
 - Final patched image startup, a subscription model response, owner allowlist rejection, gateway persistence across restart and a full protected backup/restore remain unverified. Longhorn backup target is available, but CSI VolumeSnapshot APIs are absent.
 - Codex `sandbox linux -- /bin/true` failed: bwrap cannot create a new namespace under the restricted pod. Execution remains blocked; no privilege expansion or sandbox bypass was used. A separately reviewed compatible worker is needed.
+
+## Private image and volume ownership verification
+
+The dedicated hermes-registry Secret was entered by the owner and the final private GHCR image was pulled successfully by Kubernetes. Its runtime reports UID 10000, Hermes metadata 0.22.5, msgpack 1.2.1, urllib3 2.8.0 and brotlicffi 1.2.1.0. Subscription auth remained logged in after changing images.
+
+The first model attempt was rejected before sending because the PVC mount root belonged to UID 0. With no active writer, all 21 owner-created entries were moved by UID 10000 into hermes-home on the same PVC. The runtime now mounts that owned directory via subPath; a restricted non-root initContainer creates/verifies it on fresh volumes and refuses unattended legacy-root migration. No chown/root init or privilege change was used. The test row and OAuth login survived recreation. Model-response retest pending.

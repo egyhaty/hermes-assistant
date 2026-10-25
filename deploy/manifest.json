@@ -92,6 +92,42 @@
                 "type": "RuntimeDefault"
               }
             },
+            "initContainers": [
+              {
+                "name": "prepare-data-home",
+                "image": "ghcr.io/egyhaty/hermes-assistant@sha256:557805657cd2790e107f0b72603f174827139d227925ee068ecbd9904571a939",
+                "command": [
+                  "/opt/hermes/.venv/bin/python",
+                  "-c",
+                  "from pathlib import Path\nimport os\nroot = Path('/mnt/pvc')\nhome = root / 'hermes-home'\nif home.is_symlink():\n    raise SystemExit('refusing a symlink data directory')\nlegacy = [p.name for p in root.iterdir() if p.name not in ('lost+found', 'hermes-home')]\nif legacy:\n    raise SystemExit('Legacy PVC-root data must be migrated offline before startup')\nos.umask(0o077)\nhome.mkdir(mode=0o700, exist_ok=True)\nif home.stat().st_uid != os.getuid():\n    raise SystemExit('Hermes data directory must be owned by the runtime UID')\n"
+                ],
+                "securityContext": {
+                  "allowPrivilegeEscalation": false,
+                  "readOnlyRootFilesystem": true,
+                  "capabilities": {
+                    "drop": [
+                      "ALL"
+                    ]
+                  }
+                },
+                "resources": {
+                  "requests": {
+                    "cpu": "25m",
+                    "memory": "32Mi"
+                  },
+                  "limits": {
+                    "cpu": "250m",
+                    "memory": "128Mi"
+                  }
+                },
+                "volumeMounts": [
+                  {
+                    "name": "data",
+                    "mountPath": "/mnt/pvc"
+                  }
+                ]
+              }
+            ],
             "containers": [
               {
                 "name": "hermes",
@@ -144,7 +180,8 @@
                 "volumeMounts": [
                   {
                     "name": "data",
-                    "mountPath": "/opt/data"
+                    "mountPath": "/opt/data",
+                    "subPath": "hermes-home"
                   },
                   {
                     "name": "managed",

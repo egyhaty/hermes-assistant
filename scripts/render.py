@@ -59,7 +59,7 @@ def render(settings, root=ROOT):
                       'limits': {'cpu': '2', 'memory': '4Gi'}},
         'securityContext': {'allowPrivilegeEscalation': False, 'readOnlyRootFilesystem': True,
                             'capabilities': {'drop': ['ALL']}},
-        'volumeMounts': [{'name': 'data', 'mountPath': '/opt/data'},
+        'volumeMounts': [{'name': 'data', 'mountPath': '/opt/data', 'subPath': 'hermes-home'},
                          {'name': 'managed', 'mountPath': '/etc/karem', 'readOnly': True},
                          {'name': 'tmp', 'mountPath': '/tmp'},
                          {'name': 'private', 'mountPath': '/etc/karem-private', 'readOnly': True}],
@@ -68,6 +68,27 @@ def render(settings, root=ROOT):
             "from pathlib import Path; import sys; sys.exit(0 if b'gateway' in Path('/proc/1/cmdline').read_bytes() else 1)"]},
             'initialDelaySeconds': 10, 'periodSeconds': 15, 'timeoutSeconds': 5},
     }
+    init_code = """from pathlib import Path
+import os
+root = Path('/mnt/pvc')
+home = root / 'hermes-home'
+if home.is_symlink():
+    raise SystemExit('refusing a symlink data directory')
+legacy = [p.name for p in root.iterdir() if p.name not in ('lost+found', 'hermes-home')]
+if legacy:
+    raise SystemExit('Legacy PVC-root data must be migrated offline before startup')
+os.umask(0o077)
+home.mkdir(mode=0o700, exist_ok=True)
+if home.stat().st_uid != os.getuid():
+    raise SystemExit('Hermes data directory must be owned by the runtime UID')
+"""
+    init = {'name': 'prepare-data-home', 'image': settings['image'],
+            'command': ['/opt/hermes/.venv/bin/python', '-c', init_code],
+            'securityContext': {'allowPrivilegeEscalation': False, 'readOnlyRootFilesystem': True,
+                                'capabilities': {'drop': ['ALL']}},
+            'resources': {'requests': {'cpu': '25m', 'memory': '32Mi'},
+                          'limits': {'cpu': '250m', 'memory': '128Mi'}},
+            'volumeMounts': [{'name': 'data', 'mountPath': '/mnt/pvc'}]}
     deployment = {'apiVersion': 'apps/v1', 'kind': 'Deployment', 'metadata': metadata('hermes'),
         'spec': {'replicas': 0, 'strategy': {'type': 'Recreate'}, 'selector': {'matchLabels': labels},
                  'template': {'metadata': {'labels': labels}, 'spec': {
@@ -75,7 +96,7 @@ def render(settings, root=ROOT):
                     'securityContext': {'runAsNonRoot': True, 'runAsUser': 10000, 'runAsGroup': 10000,
                         'fsGroup': 10000, 'fsGroupChangePolicy': 'OnRootMismatch',
                         'seccompProfile': {'type': 'RuntimeDefault'}},
-                    'containers': [container],
+                    'initContainers': [init], 'containers': [container],
                     'volumes': [{'name': 'data', 'persistentVolumeClaim': {'claimName': 'hermes-data'}},
                                 {'name': 'managed', 'configMap': {'name': 'hermes-managed'}},
                                 {'name': 'tmp', 'emptyDir': {'sizeLimit': '1Gi'}},
