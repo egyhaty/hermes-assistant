@@ -83,13 +83,13 @@ def render(settings, root=ROOT):
     if settings.get('image_pull_secret'):
         deployment['spec']['template']['spec']['imagePullSecrets'] = [{'name': settings['image_pull_secret']}]
     objects = [
-        {'apiVersion': 'v1', 'kind': 'Namespace', 'metadata': {'name': ns}},
-        {'apiVersion': 'v1', 'kind': 'PersistentVolumeClaim', 'metadata': metadata('hermes-data'), 'spec': pvc_spec},
+        {'apiVersion': 'v1', 'kind': 'Namespace', 'metadata': {'name': ns, 'labels': {'pod-security.kubernetes.io/enforce': 'restricted', 'pod-security.kubernetes.io/enforce-version': 'v1.36'}}},
+        {'apiVersion': 'v1', 'kind': 'PersistentVolumeClaim', 'metadata': {**metadata('hermes-data'), 'annotations': {'argocd.argoproj.io/sync-options': 'Prune=false,Delete=false'}}, 'spec': pvc_spec},
         {'apiVersion': 'v1', 'kind': 'ConfigMap', 'metadata': metadata('hermes-managed'), 'data': {
             'config.yaml': json.dumps(config, indent=2), 'SOUL.md': (root / 'config/SOUL.md').read_text()}},
         deployment,
         {'apiVersion': 'networking.k8s.io/v1', 'kind': 'NetworkPolicy', 'metadata': metadata('hermes-ingress'),
-         'spec': {'podSelector': {'matchLabels': labels}, 'policyTypes': ['Ingress'], 'ingress': []}},
+         'spec': {'podSelector': {}, 'policyTypes': ['Ingress'], 'ingress': []}},
     ]
     return {'apiVersion': 'v1', 'kind': 'List', 'items': objects}
 

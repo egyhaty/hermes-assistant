@@ -1,25 +1,24 @@
-# Deployment status — 25 October 2026
+# Deployment status — 26 October 2026
 
-Existing cluster context: `kubernetes-admin@kubernetes`; three Ready amd64 nodes, Kubernetes v1.36.5, Cilium. No Hermes/Codex agent was installed on the Mac.
+Source: independent private repository https://github.com/egyhaty/hermes-assistant . Local checkout: /Users/karem/hermes-assistant . The temporary karm-devops PR was closed, its branch removed and its original unrelated working changes preserved. No Hermes/Codex agent is installed on the Mac.
 
-Manual Argo Application `hermes-foundation`, pinned to fa89e50b2cf830b14e41d9d53a7f35668a0717c9, is Synced/Healthy. Namespace `hermes` enforces restricted pod security. `hermes-data` is Bound, 20Gi, Longhorn, three replicas configured, Retain StorageClass. Argo prune/delete protection is set on the PVC. The foundation has no gateway Deployment, Service, Ingress or credentials.
+## Verified
 
-Longhorn backup target reports available. CSI VolumeSnapshot resources are absent; backup/restore has not been tested for this PVC.
+- Existing context kubernetes-admin@kubernetes: three Ready amd64 nodes, Kubernetes v1.36.5, Cilium.
+- Manual Argo foundation is Synced/Healthy from the independent repository using a repository-specific read-only SSH deploy key. No app-of-apps integration or automatic sync enabled.
+- hermes-data: Bound, 20Gi Longhorn PVC, Retain StorageClass, three configured replicas; attached/healthy during the runtime test. Argo prune/delete protection is retained in final manifests.
+- Initial Kubernetes runtime test: UID 10000, read-only root filesystem (write attempt returned EROFS), no mounted service-account token, no baked profile. Codex 0.164.0 was executable. A SQLite probe row survived pod recreation. This does not claim authenticated gateway memory acceptance.
+- Owner device-code sign-in was enabled at the owner's request. Hermes OAuth login succeeded on the PVC and auth status was logged in. Account catalog includes gpt-6.1-sol; this model is selected. No paid API credentials or fallback provider configured.
+- Final selected immutable image and successful security result: docs/build-receipts/clean-image.json and security-result.json. Zero patchable HIGH/CRITICAL findings, no scanner exceptions. This is not a complete audit or a claim of zero vulnerabilities of every severity.
+- 18 offline tests and structural validation passed. Full stopped manifest passed real server-side dry-run.
 
-Official base image amd64 digest and source revision are recorded in container/versions.json. Upstream Docker Build, Test, and Publish run https://github.com/NousResearch/hermes-agent/actions/runs/37436680662 succeeded for that revision. Registry digest and OCI revision were checked; signature verification has not been performed.
+## Desired deployment
 
-18 offline tests and structural validation passed. Foundation server admission dry-run passed after namespace creation. The first custom image build found an actual npm-prefix incompatibility; Dockerfile now installs Codex with an explicit /usr/local prefix. Corrected build: https://github.com/egyhaty/karm-devops/actions/runs/40230367057 . Runtime inspection pending.
+config/deployment.json and deploy/manifest.json use the final private GHCR image, openai-codex/gpt-6.1-sol, namespace hermes, Longhorn, the separate owner-profile Secret and optional namespace-only imagePullSecret hermes-registry. Deployment replicas remain zero pending credentials and runtime acceptance. No Service, Ingress, schedules, job applications, external messages or paid API calls enabled.
 
-Owner selected ChatGPT subscription authentication via openai-codex, with no paid API or fallback. No paid requests made, Telegram poller enabled, schedules registered or external messages sent. Available subscription model and owner OAuth login, Telegram bot token and positive numeric owner allowlist, separate Codex login, container startup, sandbox acceptance and backup/restore remain activation gates.
+## Remaining gates
 
-Source moved to independent private repository https://github.com/egyhaty/hermes-assistant . Prior karm-devops PR #37 was closed, branch removed, and original working tree restored to its prior unrelated modifications. Argo now reads the independent repository. Private owner profile is stored in hermes-profile Secret only.
-
-## Runtime evidence
-
-The Docker Hub custom image in docs/build-receipts/runtime-tested-image.json ran on Kubernetes as UID 10000 with a read-only root, no service-account token and no baked private profile. Codex reports 0.164.0. SQLite persisted one probe row after pod recreation; Longhorn reports attached/healthy. This checks SQLite persistence, not an authenticated gateway memory conversation.
-
-Codex sandbox attempt failed: `bwrap: No permissions to create a new namespace`. Execution remains blocked; no privilege escalation, seccomp relaxation or sandbox bypass was used. A separately reviewed compatible worker is needed before enabling execution.
-
-The independent repository build succeeded: https://github.com/egyhaty/hermes-assistant/actions/runs/40230687787 . Its GHCR digest is recorded separately. Subscription OAuth login succeeded and was confirmed as logged in inside Kubernetes. The account model catalog includes gpt-6.1-sol; it is selected for the final configuration. Device code sign-in was enabled at the owner's request. No gateway/poller is active.
-
-Final dependency cleanup build: https://github.com/egyhaty/hermes-assistant/actions/runs/40232927089 . It removes pip's vulnerable vendor inventory instead of suppressing scan results, and records the actual release version in package metadata. Private registry access and Telegram credentials remain missing; no gateway has been activated.
+- Dedicated read:packages credential must be entered locally using scripts/configure_registry.py; never paste it into chat.
+- Telegram bot token and positive numeric owner allowlist must be entered locally using scripts/configure_telegram.py; never paste the token into chat.
+- Final patched image startup, a subscription model response, owner allowlist rejection, gateway persistence across restart and a full protected backup/restore remain unverified. Longhorn backup target is available, but CSI VolumeSnapshot APIs are absent.
+- Codex `sandbox linux -- /bin/true` failed: bwrap cannot create a new namespace under the restricted pod. Execution remains blocked; no privilege expansion or sandbox bypass was used. A separately reviewed compatible worker is needed.

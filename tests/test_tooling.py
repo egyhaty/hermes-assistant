@@ -192,6 +192,10 @@ class DeploymentTests(unittest.TestCase):
         manifest = render.render(self.settings())
         deployment = next(x for x in manifest['items'] if x['kind'] == 'Deployment')
         self.assertEqual(deployment['spec']['replicas'], 0)
+        namespace = next(x for x in manifest['items'] if x['kind'] == 'Namespace')
+        self.assertEqual(namespace['metadata']['labels']['pod-security.kubernetes.io/enforce'], 'restricted')
+        pvc = next(x for x in manifest['items'] if x['kind'] == 'PersistentVolumeClaim')
+        self.assertEqual(pvc['metadata']['annotations']['argocd.argoproj.io/sync-options'], 'Prune=false,Delete=false')
         self.assertEqual(deployment['spec']['strategy']['type'], 'Recreate')
         pod = deployment['spec']['template']['spec']
         self.assertFalse(pod['automountServiceAccountToken'])

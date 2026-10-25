@@ -16,3 +16,7 @@ No findings have been globally suppressed. The patched image unfiltered scan is 
 Codex `sandbox linux -- /bin/true` failed under the restricted pod with `bwrap: No permissions to create a new namespace`. No privileges or sandbox settings were weakened. Execution is not enabled.
 
 The first patched scan eliminated all Debian/Node findings and the CRITICAL finding. Five HIGH results remained: Hermes placeholder metadata and pip's embedded vendor inventory for msgpack/urllib3/setuptools. The final layer removes the unused managed-interpreter pip installer and its vendored dependencies (PM/uv remains the supported installer), and corrects Hermes distribution metadata to the verified v0.22.5 CLI/source release. Installed msgpack 1.2.1 and urllib3 2.8.0 were present in the patched scan; older entries came only from pip's bundled SBOM. No scanner exception is used.
+
+## Final result
+
+The selected clean image in docs/build-receipts/clean-image.json passed the unfiltered scan with zero patchable HIGH/CRITICAL findings: https://github.com/egyhaty/hermes-assistant/actions/runs/40233184947 . No ignore file or VEX suppression was applied. The complete removal of unused pip and its affected vendor tree resolves the residual SBOM findings; accurate v0.22.5 release metadata resolves the placeholder-version match. See security-result.json for scope and date.

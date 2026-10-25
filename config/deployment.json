@@ -1,0 +1,11 @@
+{
+  "namespace": "hermes",
+  "image": "ghcr.io/egyhaty/hermes-assistant@sha256:557805657cd2790e107f0b72603f174827139d227925ee068ecbd9904571a939",
+  "provider": "openai-codex",
+  "model": "gpt-6.1-sol",
+  "timezone": "Africa/Cairo",
+  "storage_class": "longhorn",
+  "storage_size": "20Gi",
+  "secret_name": "hermes-credentials",
+  "image_pull_secret": "hermes-registry"
+}

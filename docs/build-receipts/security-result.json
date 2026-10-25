@@ -1,0 +1,12 @@
+{
+  "image": "ghcr.io/egyhaty/hermes-assistant@sha256:557805657cd2790e107f0b72603f174827139d227925ee068ecbd9904571a939",
+  "scan": "https://github.com/egyhaty/hermes-assistant/actions/runs/40233184947",
+  "severity": [
+    "HIGH",
+    "CRITICAL"
+  ],
+  "ignore_unfixed": true,
+  "exceptions": [],
+  "findings": 0,
+  "scanned_at": "2026-10-26"
+}
