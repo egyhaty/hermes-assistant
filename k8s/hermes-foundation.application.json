@@ -1,0 +1,25 @@
+{
+  "apiVersion": "argoproj.io/v1alpha1",
+  "kind": "Application",
+  "metadata": {
+    "name": "hermes-foundation",
+    "namespace": "argocd"
+  },
+  "spec": {
+    "project": "default",
+    "source": {
+      "repoURL": "https://github.com/egyhaty/karm-devops.git",
+      "targetRevision": "fa89e50b2cf830b14e41d9d53a7f35668a0717c9",
+      "path": "infrastructure/hermes/k8s/foundation"
+    },
+    "destination": {
+      "server": "https://kubernetes.default.svc",
+      "namespace": "hermes"
+    },
+    "syncPolicy": {
+      "syncOptions": [
+        "PruneLast=true"
+      ]
+    }
+  }
+}
