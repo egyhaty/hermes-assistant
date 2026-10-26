@@ -83,6 +83,7 @@ async def auth(request,handler):
   if request.path=='/jobs/login':return await handler(request)
   if request.headers.get('Upgrade','').lower()=='websocket' and request.headers.get('Origin')!=PUBLIC:raise web.HTTPForbidden()
   if not has_session(request):
+   if request.path=='/jobs/panel/api/run':print('Jobs Start rejected: missing or expired web session',flush=True)
    if request.method=='GET' and '/api/' not in request.path and request.headers.get('Upgrade','').lower()!='websocket':raise web.HTTPSeeOther('/jobs/login')
    raise web.HTTPUnauthorized()
  return await handler(request)
@@ -149,6 +150,7 @@ async def handle(request):
    for task in pending:task.cancel()
    return ws
  async with session.request(request.method,base+target,headers=headers,data=await request.read(),allow_redirects=False) as response:
+  if request.path=='/jobs/panel/api/run':print('Jobs Start backend HTTP '+str(response.status),flush=True)
   body=await response.read();out={k:v for k,v in response.headers.items() if k.lower() not in ('content-length','transfer-encoding','connection','content-encoding','access-control-allow-origin')}
   if 'Location' in out and out['Location'].startswith('/'):out['Location']='/jobs/panel'+out['Location']
   return web.Response(body=body,status=response.status,headers=out)

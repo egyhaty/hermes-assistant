@@ -16,7 +16,10 @@ from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.support.ui import WebDriverWait
 options=Options()
 options.debugger_address="127.0.0.1:9222"
+options.page_load_strategy="eager"
 driver=webdriver.Chrome(service=Service("/usr/bin/chromedriver"),options=options)
+driver.set_page_load_timeout(45)
+driver.set_script_timeout(20)
 wait=WebDriverWait(driver,5)
 actions=ActionChains(driver)
 ''')
@@ -24,6 +27,10 @@ for p in (root/'templates').glob('*.html'):
  s=p.read_text()
  for stem in ('/api/','/applied-jobs','/history'):
   s=s.replace("'"+stem,"'/jobs/panel"+stem).replace('"'+stem,'"/jobs/panel'+stem)
+ if p.name=='control_panel.html':
+  s=s.replace("fetch('/jobs/panel/api/run', { method: 'POST' }).then(function (r) { return r.json(); })", "fetch('/jobs/panel/api/run', { method: 'POST' }).then(function (r) { if (r.status === 401) { window.location.href='/jobs/login'; throw new Error('Login expired; sign in again.'); } return r.json().then(function (s) { if (!r.ok || s.error) throw new Error(s.error || 'Start failed (HTTP ' + r.status + ')'); return s; }); })")
+  s=s.replace(".then(function (s) { setRunningUI(s.running, s.pid); refreshLogs(); })\n                .catch(function () {});", ".then(function (s) { setRunningUI(s.running, s.pid); refreshLogs(); })\n                .catch(function (e) { pane.textContent = e.message; setRunningUI(false); });")
+  s=s.replace("fetch('/jobs/panel/api/status').then(function (r) { return r.json(); })", "fetch('/jobs/panel/api/status').then(function (r) { if (r.status===401) { window.location.href='/jobs/login'; throw new Error('Login expired'); } if (!r.ok) throw new Error('Status unavailable'); return r.json(); })")
  p.write_text(s)
 p=root/'config/secrets.py';p.write_text(p.read_text()+'''\nimport os
 ai_provider="openai"
