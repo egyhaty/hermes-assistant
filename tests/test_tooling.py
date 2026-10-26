@@ -232,6 +232,21 @@ class DeploymentTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             render.render(settings)
 
+    def test_public_dashboard_hostname_requires_enabled_dashboard(self):
+        settings = self.settings()
+        settings.update(dashboard='enabled', dashboard_host='hermes.example.test')
+        manifest = render.render(settings)
+        pod = next(x for x in manifest['items'] if x['kind'] == 'Deployment')['spec']['template']['spec']
+        dashboard = next(c for c in pod['containers'] if c['name'] == 'dashboard')
+        self.assertIn({'name': 'HERMES_DASHBOARD_PUBLIC_URL', 'value': 'https://hermes.example.test'}, dashboard['env'])
+        for host in ['https://bad.test', 'bad.test/path', 'bad..test']:
+            settings['dashboard_host'] = host
+            with self.assertRaises(ValueError):
+                render.render(settings)
+        settings.update(dashboard='disabled', dashboard_host='hermes.example.test')
+        with self.assertRaises(ValueError):
+            render.render(settings)
+
     def test_bootstrap_preserves_memory_sessions_and_tokens(self):
         with tempfile.TemporaryDirectory() as temp:
             home, managed = Path(temp) / 'home', Path(temp) / 'managed'

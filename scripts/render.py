@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def render(settings, root=ROOT):
     required = {'namespace', 'image', 'provider', 'model', 'timezone', 'storage_class', 'storage_size', 'secret_name'}
-    if not required.issubset(settings) or set(settings) - required - {'image_pull_secret', 'dashboard'} or not all(isinstance(v, str) for v in settings.values()):
+    if not required.issubset(settings) or set(settings) - required - {'image_pull_secret', 'dashboard', 'dashboard_host'} or not all(isinstance(v, str) for v in settings.values()):
         raise ValueError('settings must contain exactly the documented string fields')
     if 'REQUIRED_' in json.dumps(settings):
         raise ValueError('fill required deployment values first')
@@ -29,6 +29,10 @@ def render(settings, root=ROOT):
         raise ValueError('provider and model must be chosen explicitly')
     if settings.get('dashboard', 'disabled') not in ('enabled', 'disabled'):
         raise ValueError('dashboard must be enabled or disabled')
+    if settings.get('dashboard_host'):
+        host = settings['dashboard_host']
+        if settings.get('dashboard') != 'enabled' or len(host) > 253 or not re.fullmatch(r'[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?', host) or '..' in host or '.' not in host:
+            raise ValueError('dashboard_host requires an enabled dashboard and a valid DNS hostname')
     ZoneInfo(settings['timezone'])
     ns = settings['namespace']
     labels = {'app.kubernetes.io/name': 'hermes-karem'}
@@ -128,6 +132,8 @@ if home.stat().st_uid != os.getuid():
             'readinessProbe': {'tcpSocket': {'port': 9119}, 'initialDelaySeconds': 20,
                               'periodSeconds': 15, 'timeoutSeconds': 5},
         }
+        if settings.get('dashboard_host'):
+            dashboard['env'].append({'name': 'HERMES_DASHBOARD_PUBLIC_URL', 'value': 'https://' + settings['dashboard_host']})
         deployment['spec']['template']['spec']['containers'].append(dashboard)
         deployment['spec']['template']['spec']['volumes'].append(
             {'name': 'dashboard-tmp', 'emptyDir': {'sizeLimit': '512Mi'}})

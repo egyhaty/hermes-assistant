@@ -1,5 +1,6 @@
 resources:
   - manifest.json
+  - public-dashboard.json
 # Activated after encrypted restore and owner-policy acceptance on 2026-10-26.
 replicas:
   - name: hermes

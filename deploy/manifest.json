@@ -249,6 +249,10 @@
                   {
                     "name": "TZ",
                     "value": "Africa/Cairo"
+                  },
+                  {
+                    "name": "HERMES_DASHBOARD_PUBLIC_URL",
+                    "value": "https://hermes.murabba.net"
                   }
                 ],
                 "volumeMounts": [

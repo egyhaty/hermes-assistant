@@ -25,3 +25,9 @@ Then open http://127.0.0.1:9119 and sign in. The dashboard and API runtime stay 
 A free model API changes inference only. It does not repair Codex CLI's Linux namespace sandbox incompatibility; that execution remains blocked without privilege expansion.
 
 Credential-helper portability fix: the owner Mac Python lacks hashlib.scrypt. The helper now calls the installed dashboard hash_password function in the gateway Pod. A non-secret live fixture passed hash/verify and wrong-password rejection; 24 offline tests passed. Hashing failure stops before any Secret writes and does not print captured stdout/stderr.
+
+## Public HTTPS access requested by owner
+
+The owner requested access from anywhere and created A record hermes.murabba.net → 66.11.126.179. deploy/public-dashboard.json adds the Traefik HTTPS route, HTTP redirect, rate limiting, security headers and a letsencrypt-prod Certificate. The dashboard receives HERMES_DASHBOARD_PUBLIC_URL=https://hermes.murabba.net so origin/host validation and authentication use the declared address. The only Service is ClusterIP to dashboard port 9119; the gateway has no public listener.
+
+Namespace deny-ingress remains. A narrow NetworkPolicy allows Traefik-labeled Pods in the traefik namespace to reach port 9119, and a separate solver-only rule allows HTTP-01 validation on port 8089. Native dashboard password authentication remains mandatory. This supersedes the original local-tunnel-only access design. Never bypass a browser certificate warning; wait for Certificate Ready and independently verify TLS, HTTP redirect and anonymous API denial before declaring public access complete.

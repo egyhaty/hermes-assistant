@@ -8,5 +8,6 @@
   "storage_size": "20Gi",
   "secret_name": "hermes-credentials",
   "image_pull_secret": "hermes-registry",
-  "dashboard": "enabled"
+  "dashboard": "enabled",
+  "dashboard_host": "hermes.murabba.net"
 }
