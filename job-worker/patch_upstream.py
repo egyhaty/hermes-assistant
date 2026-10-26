@@ -1,6 +1,7 @@
 """Apply narrow container compatibility and truthful-profile gates to pinned upstream."""
 from pathlib import Path
-root=Path('/opt/jobapp')
+import os
+root=Path(os.environ.get("JOB_SOURCE_ROOT", "/opt/jobapp"))
 p=root/'config/_overrides.py';s=p.read_text().replace('USER_CONFIG_PATH = os.path.join(_ROOT_DIR, "user_config.json")','USER_CONFIG_PATH = "/data/user_config.json"');p.write_text(s)
 p=root/'app.py';s=p.read_text().replace('LOG_PATH = os.path.join(ROOT, ".bot_run.log")','LOG_PATH = "/data/.bot_run.log"').replace('PID_PATH = os.path.join(ROOT, ".bot_run.pid")','PID_PATH = "/data/.bot_run.pid"').replace('"cwd": ROOT','"cwd": "/data"');s=s.replace('    global _bot_proc\n    with _bot_lock:', '    from worker_guard import require_ready\n    error = require_ready()\n    if error: return jsonify({"error": error}), 409\n    global _bot_proc\n    with _bot_lock:',1)
 s=s.replace('DEFAULTS = _load_defaults()','DEFAULTS = _load_defaults()\nDEFAULTS.get("secrets", {})["llm_api_key"] = ""')
@@ -37,3 +38,4 @@ p.write_text('\n'.join(lines)+'\n')
 p=root/'runAiBot.py';s=p.read_text();s=s.replace("elif label_has(label, 'salary', 'compensation', 'ctc', 'pay'):","elif label_has(label, 'salary', 'compensation', 'ctc', 'pay') and desired_salary != '0' and current_ctc != '0':")
 s=s.replace('else: answer = full_name\n','else: answer = ""\n')
 p.write_text(s)
+p=root/'runAiBot.py';p.write_text(p.read_text().replace('driver.quit()', 'driver.service.stop()'))

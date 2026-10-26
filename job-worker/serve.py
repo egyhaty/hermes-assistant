@@ -47,7 +47,11 @@ def check_password(request):
 ATTEMPTS={}
 @web.middleware
 async def auth(request,handler):
- if request.path=='/health':return web.json_response({'ok':True})
+ if request.path=='/health':
+  try:
+   async with request.app['client'].get('http://127.0.0.1:9222/json/version',timeout=2) as response:ok=response.status==200
+  except Exception:ok=False
+  return web.json_response({'browser_ready':ok},status=200 if ok else 503)
  token=request.headers.get('Authorization','')
  if request.path in ('/control/status','/control/start','/control/stop'):
   if not hmac.compare_digest(token,'Bearer '+os.environ['CONTROL_TOKEN']):raise web.HTTPUnauthorized()

@@ -1,9 +1,10 @@
 """One-time truthful profile configuration gate; never a per-application approval."""
-import hashlib,json
+import hashlib,json,urllib.request,urllib.parse,os
 from pathlib import Path
-CONFIG=Path('/data/user_config.json')
+DATA=Path(os.environ.get('JOB_DATA', '/data'))
+CONFIG=DATA/'user_config.json'
 def profile_digest():
- return hashlib.sha256(CONFIG.read_bytes()+Path('/data/resume.pdf').read_bytes()).hexdigest()
+ return hashlib.sha256(CONFIG.read_bytes()+(DATA/'resume.pdf').read_bytes()).hexdigest()
 def validate():
  try:c=json.loads(CONFIG.read_text())
  except Exception:return 'Save your application profile first.'
@@ -13,7 +14,7 @@ def validate():
    if c.get(section,{}).get(key) in (None,''):return 'Missing verified profile field: '+key
  for k in ('require_visa','legally_authorized'):
   if c['questions'][k] not in ('Yes','No'):return 'Set work authorization and sponsorship answers explicitly.'
- if not Path('/data/resume.pdf').is_file() or not Path('/data/resume.pdf').read_bytes().startswith(b'%PDF-'):return 'Upload your current PDF resume.'
+ if not (DATA/'resume.pdf').is_file() or not (DATA/'resume.pdf').read_bytes().startswith(b'%PDF-'):return 'Upload your current PDF resume.'
  sec=c.get('secrets',{})
  if sec.get('use_AI') and not str(sec.get('llm_model','')).endswith(':free'):return 'Only an explicitly free OpenRouter model is allowed.'
  if c.get('search',{}).get('easy_apply_only') is not True:return 'Only Easy Apply is enabled for this worker.'
@@ -21,6 +22,11 @@ def validate():
 def require_ready():
  error=validate()
  if error:return error
- try:ready=Path('/data/profile-ready').read_text()
+ try:ready=(DATA/'profile-ready').read_text()
  except OSError:return 'Complete the profile setup on /jobs/ before the first automatic run.'
- return None if ready==profile_digest() else 'Profile changed: complete profile setup again before running.'
+ if ready!=profile_digest():return 'Profile changed: complete profile setup again before running.'
+ try:
+  with urllib.request.urlopen('http://127.0.0.1:9222/json',timeout=3) as r:pages=json.load(r)
+  logged_in=any(urllib.parse.urlsplit(x.get('url','')).hostname=='www.linkedin.com' and urllib.parse.urlsplit(x.get('url','')).path.startswith('/feed') for x in pages)
+ except Exception:logged_in=False
+ return None if logged_in else 'Open the remote browser and sign in to LinkedIn until the Feed page appears.' 
