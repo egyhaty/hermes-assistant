@@ -1,0 +1,9 @@
+{
+  "repository": "https://github.com/GodsScion/Auto_job_applier_linkedIn",
+  "revision": "e0b2401a7a7b333eab0b518e80be5285c3ee85c5",
+  "license": "MIT",
+  "base_image": "python:3.13-slim-bookworm@sha256:e32be0e55814a08977501ca863271d9bd02443710db8f2afaf8372e2c4508530",
+  "seccomp_source": "https://github.com/microsoft/playwright/blob/main/utils/docker/seccomp_profile.json",
+  "seccomp_source_sha256": "cc3e61cabda6bbc1e53e54d27ba4d55a9d3be829b6dd1a596f4a7b31b1cc7849",
+  "seccomp_conversion": "Resolve Docker conditions for amd64 with zero host capabilities; retain Chromium user namespace syscall allow rule."
+}
