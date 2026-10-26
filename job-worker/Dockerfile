@@ -5,7 +5,7 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-reco
 RUN mkdir /opt/jobapp && curl -fsSL "https://codeload.github.com/GodsScion/Auto_job_applier_linkedIn/tar.gz/${UPSTREAM_REV}" | tar xz --strip-components=1 -C /opt/jobapp
 RUN pip install --no-cache-dir -r /opt/jobapp/requirements.txt gunicorn aiohttp && pip freeze > /opt/python-lock.txt
 COPY job-worker/ /opt/worker/
-RUN python /opt/worker/patch_upstream.py && python -m compileall -q /opt/jobapp /opt/worker && useradd -u 10000 -m worker && mkdir /data && chown 10000:10000 /data
+RUN python /opt/worker/patch_upstream.py && python -m compileall -q /opt/jobapp /opt/worker && useradd -u 10000 -m worker && mkdir -p /data && chown 10000:10000 /data
 WORKDIR /data
 USER 10000:10000
 ENTRYPOINT ["python", "/opt/worker/serve.py"]

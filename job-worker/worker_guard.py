@@ -29,4 +29,4 @@ def require_ready():
   with urllib.request.urlopen('http://127.0.0.1:9222/json',timeout=3) as r:pages=json.load(r)
   logged_in=any(urllib.parse.urlsplit(x.get('url','')).hostname=='www.linkedin.com' and urllib.parse.urlsplit(x.get('url','')).path.startswith('/feed') for x in pages)
  except Exception:logged_in=False
- return None if logged_in else 'Open the remote browser and sign in to LinkedIn until the Feed page appears.' 
+ return None if logged_in else 'Open the remote browser and sign in to LinkedIn until the Feed page appears.'
