@@ -1,0 +1,15 @@
+{
+  "date": "2026-10-26",
+  "hostname": "hermes.murabba.net",
+  "public_ip": "66.11.126.179",
+  "public_and_authoritative_dns_verified": true,
+  "certificate_ready": true,
+  "certificate_expires": "2027-01-24T00:39:33Z",
+  "https_status": 302,
+  "tls_verification": 0,
+  "anonymous_config_status": 401,
+  "http_redirect_status": 301,
+  "http_redirect_target": "https://hermes.murabba.net/",
+  "verification_method": "TLS/HTTP to published IP with correct SNI/hostname; local DNS resolver still caches negative result",
+  "browser_public_login_verified": false
+}
