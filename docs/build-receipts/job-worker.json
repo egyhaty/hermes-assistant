@@ -1,8 +1,8 @@
 {
-  "image": "ghcr.io/egyhaty/hermes-assistant-jobs@sha256:369296745bbf6dd0548922e2f71c854c5b5a79d8beb5cb32f7517b9fea04ebd8",
+  "image": "ghcr.io/egyhaty/hermes-assistant-jobs@sha256:8568f8e8a978af939a917f32136a84dfb390e678d151aea305f1598a6194acfb",
   "upstream_revision": "e0b2401a7a7b333eab0b518e80be5285c3ee85c5",
-  "source_revision": "927c44ac5c29afbe21b060d52b5193143fb3eaf2",
-  "build_and_scan": "https://github.com/egyhaty/hermes-assistant/actions/runs/40324898384",
+  "source_revision": "69c088fbb871618cd907e4589206e4303ef77e66",
+  "build_and_scan": "https://github.com/egyhaty/hermes-assistant/actions/runs/40373545335",
   "patchable_high_critical_findings": 0,
-  "runtime_acceptance": "Deployed on Kubernetes; private Xauthority and PyAutoGUI passed; Groq gpt-oss-120b synthetic READY response and actual jobs LangChain structured skill extraction passed. No applications sent by these tests."
+  "runtime_acceptance": "Deployed; isolated loopback tests verified expired-session Start=401, panel errors visible, original Start confirmation preserved, authenticated status/history JSON=200, and live startup gate passed. Read-only eager search found nine job links in 29.8 seconds. Fresh user-facing panel navigation redirected to login, confirming current session requires reauthentication. No applications submitted by these tests."
 }
