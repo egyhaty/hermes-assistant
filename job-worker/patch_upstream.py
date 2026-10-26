@@ -37,3 +37,5 @@ p=root/'runAiBot.py';s=p.read_text();s=s.replace("elif label_has(label, 'salary'
 s=s.replace('else: answer = full_name\n','else: answer = ""\n')
 p.write_text(s)
 p=root/'runAiBot.py';p.write_text(p.read_text().replace('driver.quit()', 'driver.service.stop()'))
+# Residency/sponsorship is not proof of an employment work permit.
+p=root/'runAiBot.py';s=p.read_text();needle='    if find_bad_word(label, visa_terms): return require_visa';assert needle in s;s=s.replace(needle,"    if find_bad_word(label, ['work permit', 'labour card', 'labor card']): return ''\n"+needle,1);p.write_text(s)
