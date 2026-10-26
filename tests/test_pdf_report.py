@@ -17,6 +17,13 @@ class PdfReportTests(unittest.TestCase):
         self.assertNotIn('<img', rendered)
         self.assertIn('&lt;script&gt;', rendered)
 
+    def test_mixed_content_has_explicit_first_strong_direction(self):
+        self.assertEqual(pdf.text_dir("English with عربي"), "ltr")
+        self.assertEqual(pdf.text_dir("العربية with English"), "rtl")
+        rendered = pdf.document({"title": "Report", "sections": [{"paragraphs": ["English paragraph."]}]})
+        self.assertIn('<p dir="ltr">English paragraph.</p>', rendered)
+        self.assertIn("direction:ltr", pdf.CSS)
+
     def test_table_must_have_consistent_columns(self):
         with self.assertRaises(ValueError):
             pdf.document({'title': 'test', 'sections': [{'table': {'headers': ['a'], 'rows': [['a', 'b']]}}]})

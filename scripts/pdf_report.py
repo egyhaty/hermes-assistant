@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Local bilingual report generation. No remote resources or credential files are read."""
-import argparse,html,io,json,os,subprocess,tempfile
+import argparse,html,io,json,os,subprocess,tempfile,unicodedata
 from pathlib import Path
 from urllib.parse import unquote,urlsplit
 FONT_ROOT=Path('/usr/share/fonts').resolve()
-CSS='''@page {size:A4; margin:20mm 17mm 20mm; @bottom-center {content:counter(page) " / " counter(pages); font:10pt "DejaVu Sans";color:#64748b;}}
+CSS='''@page {size:A4; margin:20mm 17mm 20mm; @bottom-center {direction:ltr;unicode-bidi:isolate;content:counter(page) " / " counter(pages); font:10pt "DejaVu Sans";color:#64748b;}}
+[dir="ltr"] {text-align:left;} [dir="rtl"] {text-align:right;}
 body {font-family:"Noto Naskh Arabic","DejaVu Sans",sans-serif;font-size:12pt;line-height:1.65;color:#172b4d;}
 h1 {font-size:25pt;line-height:1.4;color:#102f50;margin:0 0 4mm;border-bottom:3pt solid #159a9c;padding-bottom:4mm;}
 h2 {font-size:17pt;line-height:1.4;color:#123e63;margin:7mm 0 3mm;break-after:avoid;}
@@ -15,23 +16,29 @@ tr {break-inside:avoid;} tbody tr:nth-child(even){background:#f0f6fa;} ul {paddi
 .new-page {break-before:page;} .ltr {direction:ltr;unicode-bidi:isolate;} img {max-width:100%;}
 '''
 def escape(value):return html.escape(str(value),quote=True)
+def text_dir(value):
+ for char in str(value):
+  bidi=unicodedata.bidirectional(char)
+  if bidi in ('R','AL'):return 'rtl'
+  if bidi=='L':return 'ltr'
+ return 'rtl'
 def document(data):
  if not isinstance(data,dict) or not isinstance(data.get('title'),str):raise ValueError('Report needs a title string.')
  direction=data.get('direction','rtl')
  if direction not in ('rtl','ltr'):raise ValueError('direction must be rtl or ltr')
  parts=['<!doctype html><html lang="ar" dir="'+direction+'"><meta charset="utf-8"><title>'+escape(data['title'])+'</title><body><h1>'+escape(data['title'])+'</h1>']
- if data.get('subtitle'):parts.append('<p class="subtitle" dir="auto">'+escape(data['subtitle'])+'</p>')
+ if data.get('subtitle'):parts.append('<p class="subtitle" dir="'+text_dir(data['subtitle'])+'">'+escape(data['subtitle'])+'</p>')
  for section in data.get('sections',[]):
   parts.append('<section'+(' class="new-page"' if section.get('new_page') else '')+'>')
-  if section.get('heading'):parts.append('<h2 dir="auto">'+escape(section['heading'])+'</h2>')
-  for paragraph in section.get('paragraphs',[]):parts.append('<p dir="auto">'+escape(paragraph)+'</p>')
-  if section.get('bullets'):parts.append('<ul>'+''.join('<li dir="auto">'+escape(x)+'</li>' for x in section['bullets'])+'</ul>')
+  if section.get('heading'):parts.append('<h2 dir="'+text_dir(section['heading'])+'">'+escape(section['heading'])+'</h2>')
+  for paragraph in section.get('paragraphs',[]):parts.append('<p dir="'+text_dir(paragraph)+'">'+escape(paragraph)+'</p>')
+  if section.get('bullets'):parts.append('<ul>'+''.join('<li dir="'+text_dir(x)+'">'+escape(x)+'</li>' for x in section['bullets'])+'</ul>')
   table=section.get('table')
   if table:
    headers=table['headers'];rows=table['rows']
    if any(len(row)!=len(headers) for row in rows):raise ValueError('Every table row must match its headers.')
-   parts.append('<table><thead><tr>'+''.join('<th dir="auto">'+escape(x)+'</th>' for x in headers)+'</tr></thead><tbody>')
-   for row in rows:parts.append('<tr>'+''.join('<td dir="auto">'+escape(x)+'</td>' for x in row)+'</tr>')
+   parts.append('<table dir="'+text_dir(headers[0] if headers else '')+'"><thead><tr>'+''.join('<th dir="'+text_dir(x)+'">'+escape(x)+'</th>' for x in headers)+'</tr></thead><tbody>')
+   for row in rows:parts.append('<tr>'+''.join('<td dir="'+text_dir(x)+'">'+escape(x)+'</td>' for x in row)+'</tr>')
    parts.append('</tbody></table>')
   parts.append('</section>')
  return ''.join(parts)+'</body></html>'
