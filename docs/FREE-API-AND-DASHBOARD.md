@@ -8,7 +8,7 @@ Run locally (credential entry only, agent runtime stays on Kubernetes):
 python3 /Users/karem/hermes-assistant/scripts/configure_free_api.py --dashboard
 ```
 
-This verifies the key with the official key endpoint, refuses an account not reported as free-tier, then creates hermes-free-api. It optionally prompts for a new dashboard password twice (minimum 12 characters), derives the upstream-compatible scrypt hash and creates separate hermes-dashboard-auth. No password or API key is printed, written to a file or put in command arguments. Username: karem. Existing Telegram credentials are neither read nor changed. No inference call or active-provider change occurs in the helper.
+This verifies the key with the official key endpoint, refuses an account not reported as free-tier, then creates hermes-free-api. It optionally prompts for a new dashboard password twice (minimum 12 characters), derives the exact upstream scrypt hash inside the existing Kubernetes runtime (password on exec stdin only; no local scrypt dependency) and creates separate hermes-dashboard-auth. No password or API key is printed, written to a file or put in command arguments. Username: karem. Existing Telegram credentials are neither read nor changed. No inference call or active-provider change occurs in the helper.
 
 config/deployment.free.example.json is the prepared target. Renderer accepts only openrouter/free or an explicit :free model for OpenRouter, adds only hermes-free-api to the gateway, and reduces max turns to five. No paid model fallback is configured. The actual model change requires verified Secrets and a Kubernetes rollout; this preparation alone is not evidence of a successful API call.
 
@@ -23,3 +23,5 @@ kubectl --context kubernetes-admin@kubernetes -n hermes port-forward deployment/
 Then open http://127.0.0.1:9119 and sign in. The dashboard and API runtime stay on Kubernetes. Configuration managed by bootstrap/GitOps is refreshed at startup; persist deployment/model choices in the repository to keep dashboard edits across rollouts. Credential rotation goes through Secrets. No cron jobs or deliveries are enabled by opening the dashboard.
 
 A free model API changes inference only. It does not repair Codex CLI's Linux namespace sandbox incompatibility; that execution remains blocked without privilege expansion.
+
+Credential-helper portability fix: the owner Mac Python lacks hashlib.scrypt. The helper now calls the installed dashboard hash_password function in the gateway Pod. A non-secret live fixture passed hash/verify and wrong-password rejection; 24 offline tests passed. Hashing failure stops before any Secret writes and does not print captured stdout/stderr.
