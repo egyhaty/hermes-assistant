@@ -55,3 +55,7 @@ The dashboard started from packaged assets on port 9119 with the native auth gat
 ## Public dashboard rollout in progress
 
 Owner explicitly requested permanent anywhere access and added hermes.murabba.net → 66.11.126.179. Public DNS resolvers return the correct IP. HTTPS ingress, redirect, authentication/public_url declaration, rate limit and narrowly scoped ingress rules were applied; the certificate is Ready. Public and authoritative DNS resolve correctly. TLS chain/hostname verification passed against the published IP, HTTPS root redirects to login (302), anonymous /api/config is denied (401), and HTTP redirects to HTTPS (301). The local Mac resolver still caches a negative DNS result, so public browser login from that machine remains pending cache propagation. Receipt: docs/build-receipts/public-dashboard-acceptance.json.
+
+## Gmail configuration repaired — 26 October
+
+Himalaya v2.2.1 on the PVC now uses the v2 IMAP/TLS account schema rather than the unsupported legacy backend.gmail table. The owner entered a Google app password through configure_gmail.py into hermes-gmail; only the gateway receives the read-only Secret mount. Native account check authenticated successfully: imap ok=true, exit 0. No email content was read or sent. Runtime private config and password-command helper persist on the data PVC. See docs/GMAIL-HIMALAYA.md.

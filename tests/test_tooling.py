@@ -225,7 +225,7 @@ class DeploymentTests(unittest.TestCase):
         gateway, dashboard = pod['containers']
         self.assertIn({'secretRef': {'name': 'hermes-free-api'}}, gateway['envFrom'])
         self.assertEqual(dashboard['envFrom'], [{'secretRef': {'name': 'hermes-dashboard-auth'}}])
-        self.assertFalse(any(m['name'] in ('private', 'managed') for m in dashboard['volumeMounts']))
+        self.assertFalse(any(m['name'] in ('private', 'managed', 'mail') for m in dashboard['volumeMounts']))
         self.assertFalse(dashboard['securityContext']['allowPrivilegeEscalation'])
         self.assertFalse(any(x['kind'] in ('Service', 'Ingress') for x in manifest['items']))
         settings['model'] = 'paid/model'

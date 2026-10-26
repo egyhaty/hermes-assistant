@@ -64,7 +64,8 @@ def render(settings, root=ROOT):
         'envFrom': [{'secretRef': {'name': settings['secret_name']}}],
         'env': [{'name': 'HERMES_HOME', 'value': '/opt/data'}, {'name': 'HOME', 'value': '/opt/data'},
                 {'name': 'HERMES_TIMEZONE', 'value': settings['timezone']},
-                {'name': 'TZ', 'value': settings['timezone']}],
+                {'name': 'TZ', 'value': settings['timezone']},
+                {'name': 'HIMALAYA_CONFIG', 'value': '/opt/data/workspace/himalaya-config/config.toml'}],
         'resources': {'requests': {'cpu': '250m', 'memory': '1Gi'},
                       'limits': {'cpu': '2', 'memory': '4Gi'}},
         'securityContext': {'allowPrivilegeEscalation': False, 'readOnlyRootFilesystem': True,
@@ -72,7 +73,8 @@ def render(settings, root=ROOT):
         'volumeMounts': [{'name': 'data', 'mountPath': '/opt/data', 'subPath': 'hermes-home'},
                          {'name': 'managed', 'mountPath': '/etc/karem', 'readOnly': True},
                          {'name': 'tmp', 'mountPath': '/tmp'},
-                         {'name': 'private', 'mountPath': '/etc/karem-private', 'readOnly': True}],
+                         {'name': 'private', 'mountPath': '/etc/karem-private', 'readOnly': True},
+                         {'name': 'mail', 'mountPath': '/etc/hermes-mail', 'readOnly': True}],
         # Process-only readiness: not a claim that Telegram/provider connectivity is healthy.
         'readinessProbe': {'exec': {'command': ['/opt/hermes/.venv/bin/python', '-c',
             "from pathlib import Path; import sys; sys.exit(0 if b'gateway' in Path('/proc/1/cmdline').read_bytes() else 1)"]},
@@ -113,7 +115,8 @@ if home.stat().st_uid != os.getuid():
                     'volumes': [{'name': 'data', 'persistentVolumeClaim': {'claimName': 'hermes-data'}},
                                 {'name': 'managed', 'configMap': {'name': 'hermes-managed'}},
                                 {'name': 'tmp', 'emptyDir': {'sizeLimit': '1Gi'}},
-                                {'name': 'private', 'secret': {'secretName': 'hermes-profile', 'defaultMode': 288}}]}}}}
+                                {'name': 'private', 'secret': {'secretName': 'hermes-profile', 'defaultMode': 288}},
+                                {'name': 'mail', 'secret': {'secretName': 'hermes-gmail', 'optional': True, 'defaultMode': 288}}]}}}}
     if settings.get('dashboard') == 'enabled':
         # Admin UI explicitly manages the same profile; no Telegram/API/profile Secret is injected.
         dashboard = {

@@ -161,6 +161,10 @@
                   {
                     "name": "TZ",
                     "value": "Africa/Cairo"
+                  },
+                  {
+                    "name": "HIMALAYA_CONFIG",
+                    "value": "/opt/data/workspace/himalaya-config/config.toml"
                   }
                 ],
                 "resources": {
@@ -200,6 +204,11 @@
                   {
                     "name": "private",
                     "mountPath": "/etc/karem-private",
+                    "readOnly": true
+                  },
+                  {
+                    "name": "mail",
+                    "mountPath": "/etc/hermes-mail",
                     "readOnly": true
                   }
                 ],
@@ -318,6 +327,14 @@
                 "name": "private",
                 "secret": {
                   "secretName": "hermes-profile",
+                  "defaultMode": 288
+                }
+              },
+              {
+                "name": "mail",
+                "secret": {
+                  "secretName": "hermes-gmail",
+                  "optional": true,
                   "defaultMode": 288
                 }
               },
