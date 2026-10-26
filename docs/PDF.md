@@ -11,3 +11,7 @@ Example:
 ```
 
 The sample contains synthetic data, not an earlier user analysis. `--preview` renders page one; render and inspect every page of real deliverables with `pdftoppm`. Never claim delivery until a real file has been generated and verified. Existing output files require explicit `--overwrite`.
+
+## Accepted deployment (2026-10-27)
+
+The pinned image passed 50 offline tests and its immutable-image security scan (zero patchable HIGH/CRITICAL findings). A restricted, credential-free Kubernetes Pod generated the two-page bilingual sample; both rendered pages were inspected, including Arabic shaping, English direction, tables and page numbers. Arabic and Latin fonts are embedded. The real main gateway discovered `karem-pdf` and successfully wrote a sample PDF and preview to its persistent reports directory. Main gateway and dashboard became Ready; HTTPS login returned 200. See `build-receipts/pdf-runtime.json` for the exact image and CI receipts.

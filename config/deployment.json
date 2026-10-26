@@ -1,6 +1,6 @@
 {
   "namespace": "hermes",
-  "image": "ghcr.io/egyhaty/hermes-assistant@sha256:557805657cd2790e107f0b72603f174827139d227925ee068ecbd9904571a939",
+  "image": "ghcr.io/egyhaty/hermes-assistant@sha256:3edc1495e91553d826bf48e976ce0b1ef2b983a9e6623da5f8cda44c1090b6d9",
   "provider": "openrouter",
   "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
   "timezone": "Africa/Cairo",

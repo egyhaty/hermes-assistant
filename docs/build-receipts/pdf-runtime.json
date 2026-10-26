@@ -1,0 +1,16 @@
+{
+  "image": "ghcr.io/egyhaty/hermes-assistant@sha256:3edc1495e91553d826bf48e976ce0b1ef2b983a9e6623da5f8cda44c1090b6d9",
+  "revision": "81e6e5d6c075400078a43cdfde2be14ff33bb7e2",
+  "runtime_acceptance": "passed: restricted Kubernetes Pod, main gateway skill discovery, persistent PDF generation, two-page visual review",
+  "build_run": 40405097542,
+  "security_run": 40405545983,
+  "patchable_high_critical": 0,
+  "offline_tests": 50,
+  "pdf_pages": 2,
+  "fonts_embedded": [
+    "Noto Naskh Arabic",
+    "DejaVu Sans"
+  ],
+  "main_ready": true,
+  "dashboard_https_login_status": 200
+}
