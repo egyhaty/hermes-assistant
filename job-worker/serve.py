@@ -165,6 +165,13 @@ def main():
  for name in ('USERNAME','PASSWORD_HASH','CONTROL_TOKEN'):
   if not os.environ.get(name):raise SystemExit('Missing required worker authentication')
  seed()
+ if os.environ.get('JOB_AI_PROVIDER')=='groq' and os.environ.get('GROQ_API_KEY'):
+  # Preserve the approval of verified personal facts when changing only AI routing.
+  config=Path('/data/user_config.json');marker=Path('/data/profile-ready')
+  armed=marker.exists() and marker.read_text()==profile_digest()
+  c=json.loads(config.read_text());c['secrets'].update(ai_provider='openai',llm_model='openai/gpt-oss-120b',llm_api_url='https://api.groq.com/openai/v1',llm_api_key='',use_AI=True)
+  config.write_text(json.dumps(c,indent=2))
+  if armed:marker.write_text(profile_digest())
  # Xlib requires an authority file, and every GUI child inherits this cookie.
  authority=Path('/data/.Xauthority');authority.touch(mode=0o600,exist_ok=True);authority.chmod(0o600)
  os.environ['XAUTHORITY']=str(authority)

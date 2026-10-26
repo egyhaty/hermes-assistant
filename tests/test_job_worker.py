@@ -18,6 +18,12 @@ class JobWorkerTests(unittest.TestCase):
   self.config['questions']['legally_authorized']='';self.save();self.assertIsNone(self.g.validate());self.assertEqual(json.loads((self.data/'user_config.json').read_text())['questions']['legally_authorized'],'')
  def test_paid_model_is_rejected(self):
   self.config['secrets']={'use_AI':True,'llm_model':'paid-model'};self.save();self.assertIn('free',self.g.validate())
+ def test_groq_requires_own_key_and_fixed_model(self):
+  self.config['secrets']={'use_AI':True,'llm_model':'openai/gpt-oss-120b'};self.save()
+  with patch.dict(os.environ,{'JOB_AI_PROVIDER':'groq','GROQ_API_KEY':''}):self.assertIn('Secret',self.g.validate())
+  with patch.dict(os.environ,{'JOB_AI_PROVIDER':'groq','GROQ_API_KEY':'fixture-only'}):self.assertIsNone(self.g.validate())
+  self.config['secrets']['llm_model']='arbitrary-paid-model';self.save()
+  with patch.dict(os.environ,{'JOB_AI_PROVIDER':'groq','GROQ_API_KEY':'fixture-only'}):self.assertIn('free-plan',self.g.validate())
  def test_profile_or_resume_change_invalidates_setup(self):
   (self.data/'profile-ready').write_text(self.g.profile_digest());(self.data/'resume.pdf').write_bytes(b'%PDF-1.7\nchanged')
   self.assertIn('Profile changed',self.g.require_ready())
