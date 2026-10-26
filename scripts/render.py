@@ -53,8 +53,6 @@ def render(settings, root=ROOT):
         pvc_spec['storageClassName'] = settings['storage_class']
     container = {
         'name': 'hermes', 'image': settings['image'], 'imagePullPolicy': 'IfNotPresent',
-        'command': ['/usr/bin/tini', '-g', '--', '/opt/hermes/.venv/bin/python',
-                    '/opt/karem/scripts/bootstrap.py', '--exec'],
         'envFrom': [{'secretRef': {'name': settings['secret_name']}}],
         'env': [{'name': 'HERMES_HOME', 'value': '/opt/data'}, {'name': 'HOME', 'value': '/opt/data'},
                 {'name': 'HERMES_TIMEZONE', 'value': settings['timezone']},
@@ -69,7 +67,7 @@ def render(settings, root=ROOT):
                          {'name': 'private', 'mountPath': '/etc/karem-private', 'readOnly': True}],
         # Process-only readiness: not a claim that Telegram/provider connectivity is healthy.
         'readinessProbe': {'exec': {'command': ['/opt/hermes/.venv/bin/python', '-c',
-            "from pathlib import Path; import sys; cmds=[p.read_bytes().split(bytes([0])) for p in Path('/proc').glob('[0-9]*/cmdline') if p.exists()]; sys.exit(0 if any(b'gateway' in c and b'run' in c for c in cmds) else 1)"]},
+            "from pathlib import Path; import sys; sys.exit(0 if b'gateway' in Path('/proc/1/cmdline').read_bytes() else 1)"]},
             'initialDelaySeconds': 10, 'periodSeconds': 15, 'timeoutSeconds': 5},
     }
     init_code = """from pathlib import Path

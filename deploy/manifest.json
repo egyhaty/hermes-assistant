@@ -133,14 +133,6 @@
                 "name": "hermes",
                 "image": "ghcr.io/egyhaty/hermes-assistant@sha256:557805657cd2790e107f0b72603f174827139d227925ee068ecbd9904571a939",
                 "imagePullPolicy": "IfNotPresent",
-                "command": [
-                  "/usr/bin/tini",
-                  "-g",
-                  "--",
-                  "/opt/hermes/.venv/bin/python",
-                  "/opt/karem/scripts/bootstrap.py",
-                  "--exec"
-                ],
                 "envFrom": [
                   {
                     "secretRef": {
@@ -211,7 +203,7 @@
                     "command": [
                       "/opt/hermes/.venv/bin/python",
                       "-c",
-                      "from pathlib import Path; import sys; cmds=[p.read_bytes().split(bytes([0])) for p in Path('/proc').glob('[0-9]*/cmdline') if p.exists()]; sys.exit(0 if any(b'gateway' in c and b'run' in c for c in cmds) else 1)"
+                      "from pathlib import Path; import sys; sys.exit(0 if b'gateway' in Path('/proc/1/cmdline').read_bytes() else 1)"
                     ]
                   },
                   "initialDelaySeconds": 10,
