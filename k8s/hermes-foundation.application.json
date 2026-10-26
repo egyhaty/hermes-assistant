@@ -9,7 +9,7 @@
     "project": "default",
     "source": {
       "repoURL": "git@github.com:egyhaty/hermes-assistant.git",
-      "targetRevision": "133b7002e3548a0a58fd8a90cbfdec56fd52d109",
+      "targetRevision": "28aea8cab3490e42663733dff9fcf6ee5f0656cb",
       "path": "deploy"
     },
     "destination": {
