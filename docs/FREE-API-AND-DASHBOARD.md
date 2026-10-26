@@ -1,0 +1,25 @@
+# Free cloud API and dashboard preparation
+
+Owner requested a free cloud API on 26 October 2026; this supersedes the original subscription-only provider constraint. No local model is selected. OpenRouter's openrouter/free router selects only available free models and filters for required features. The published unfunded free tier normally permits 50 model requests per day and 20/minute; an agent turn can consume several requests. Quota is not unlimited and upstream availability may vary. See https://openrouter.ai/openrouter/free and https://openrouter.ai/docs/api_reference/limits . Do not add funds, payment methods or auto top-up for this setup.
+
+Run locally (credential entry only, agent runtime stays on Kubernetes):
+
+```sh
+python3 /Users/karem/hermes-assistant/scripts/configure_free_api.py --dashboard
+```
+
+This verifies the key with the official key endpoint, refuses an account not reported as free-tier, then creates hermes-free-api. It optionally prompts for a new dashboard password twice (minimum 12 characters), derives the upstream-compatible scrypt hash and creates separate hermes-dashboard-auth. No password or API key is printed, written to a file or put in command arguments. Username: karem. Existing Telegram credentials are neither read nor changed. No inference call or active-provider change occurs in the helper.
+
+config/deployment.free.example.json is the prepared target. Renderer accepts only openrouter/free or an explicit :free model for OpenRouter, adds only hermes-free-api to the gateway, and reduces max turns to five. No paid model fallback is configured. The actual model change requires verified Secrets and a Kubernetes rollout; this preparation alone is not evidence of a successful API call.
+
+The optional dashboard is a separate container in the existing single gateway Pod. It gets only its dedicated dashboard-auth Secret, HOME/HERMES_HOME/TZ and the data-home mount needed to administer the requested profile, plus its own temporary volume. It does not mount the private-profile Secret or managed ConfigMap and does not inherit Telegram or model API environment variables. As an administrative interface it can access data in the managed profile, including stored credential state; protect its password accordingly. The non-loopback bind engages the native authentication gate, which refuses startup without an auth provider. Existing deny-ingress remains; no Service/Ingress/NodePort/public URL is created.
+
+Reach it through an owner-authenticated Kubernetes tunnel once deployed:
+
+```sh
+kubectl --context kubernetes-admin@kubernetes -n hermes port-forward deployment/hermes 9119:9119 --address 127.0.0.1
+```
+
+Then open http://127.0.0.1:9119 and sign in. The dashboard and API runtime stay on Kubernetes. Configuration managed by bootstrap/GitOps is refreshed at startup; persist deployment/model choices in the repository to keep dashboard edits across rollouts. Credential rotation goes through Secrets. No cron jobs or deliveries are enabled by opening the dashboard.
+
+A free model API changes inference only. It does not repair Codex CLI's Linux namespace sandbox incompatibility; that execution remains blocked without privilege expansion.

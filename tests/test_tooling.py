@@ -217,6 +217,21 @@ class DeploymentTests(unittest.TestCase):
             with self.subTest(key=key), self.assertRaises(ValueError):
                 render.render(settings)
 
+    def test_free_provider_rejects_paid_models_and_dashboard_has_separate_secrets(self):
+        settings = self.settings()
+        settings.update(provider='openrouter', model='openrouter/free', dashboard='enabled')
+        manifest = render.render(settings)
+        pod = next(x for x in manifest['items'] if x['kind'] == 'Deployment')['spec']['template']['spec']
+        gateway, dashboard = pod['containers']
+        self.assertIn({'secretRef': {'name': 'hermes-free-api'}}, gateway['envFrom'])
+        self.assertEqual(dashboard['envFrom'], [{'secretRef': {'name': 'hermes-dashboard-auth'}}])
+        self.assertFalse(any(m['name'] in ('private', 'managed') for m in dashboard['volumeMounts']))
+        self.assertFalse(dashboard['securityContext']['allowPrivilegeEscalation'])
+        self.assertFalse(any(x['kind'] in ('Service', 'Ingress') for x in manifest['items']))
+        settings['model'] = 'paid/model'
+        with self.assertRaises(ValueError):
+            render.render(settings)
+
     def test_bootstrap_preserves_memory_sessions_and_tokens(self):
         with tempfile.TemporaryDirectory() as temp:
             home, managed = Path(temp) / 'home', Path(temp) / 'managed'

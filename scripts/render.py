@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def render(settings, root=ROOT):
     required = {'namespace', 'image', 'provider', 'model', 'timezone', 'storage_class', 'storage_size', 'secret_name'}
-    if not required.issubset(settings) or set(settings) - required - {'image_pull_secret'} or not all(isinstance(v, str) for v in settings.values()):
+    if not required.issubset(settings) or set(settings) - required - {'image_pull_secret', 'dashboard'} or not all(isinstance(v, str) for v in settings.values()):
         raise ValueError('settings must contain exactly the documented string fields')
     if 'REQUIRED_' in json.dumps(settings):
         raise ValueError('fill required deployment values first')
@@ -21,10 +21,14 @@ def render(settings, root=ROOT):
         raise ValueError('image must be pinned by sha256 digest')
     if not re.fullmatch(r'[1-9][0-9]*(?:Gi|Mi)', settings['storage_size']):
         raise ValueError('storage_size must be a positive Mi or Gi quantity')
-    if settings['provider'] != 'openai-codex':
-        raise ValueError('owner policy requires ChatGPT subscription provider openai-codex; no paid API fallback')
+    if settings['provider'] not in ('openai-codex', 'openrouter'):
+        raise ValueError('only the authorized subscription or free OpenRouter provider is allowed')
+    if settings['provider'] == 'openrouter' and settings['model'] != 'openrouter/free' and not settings['model'].endswith(':free'):
+        raise ValueError('OpenRouter must use a free-only model; paid models are refused')
     if not settings['model'].strip():
         raise ValueError('provider and model must be chosen explicitly')
+    if settings.get('dashboard', 'disabled') not in ('enabled', 'disabled'):
+        raise ValueError('dashboard must be enabled or disabled')
     ZoneInfo(settings['timezone'])
     ns = settings['namespace']
     labels = {'app.kubernetes.io/name': 'hermes-karem'}
@@ -33,7 +37,7 @@ def render(settings, root=ROOT):
         '_config_version': 51,  # Verified against the selected Hermes v0.22.5 image.
         'model': {'provider': settings['provider'], 'default': settings['model']},
         'database': {'journal_mode': 'delete'},
-        'agent': {'max_turns': 30, 'gateway_timeout': 900},
+        'agent': {'max_turns': 5 if settings['provider'] == 'openrouter' else 30, 'gateway_timeout': 900},
         'max_concurrent_sessions': 2,
         'group_sessions_per_user': True,
         'terminal': {'backend': 'local', 'cwd': '/opt/data/workspace', 'timeout': 120, 'home_mode': 'profile'},
@@ -70,6 +74,8 @@ def render(settings, root=ROOT):
             "from pathlib import Path; import sys; sys.exit(0 if b'gateway' in Path('/proc/1/cmdline').read_bytes() else 1)"]},
             'initialDelaySeconds': 10, 'periodSeconds': 15, 'timeoutSeconds': 5},
     }
+    if settings['provider'] == 'openrouter':
+        container['envFrom'].append({'secretRef': {'name': 'hermes-free-api'}})
     init_code = """from pathlib import Path
 import os
 root = Path('/mnt/pvc')
@@ -103,6 +109,27 @@ if home.stat().st_uid != os.getuid():
                                 {'name': 'managed', 'configMap': {'name': 'hermes-managed'}},
                                 {'name': 'tmp', 'emptyDir': {'sizeLimit': '1Gi'}},
                                 {'name': 'private', 'secret': {'secretName': 'hermes-profile', 'defaultMode': 288}}]}}}}
+    if settings.get('dashboard') == 'enabled':
+        # Admin UI explicitly manages the same profile; no Telegram/API/profile Secret is injected.
+        dashboard = {
+            'name': 'dashboard', 'image': settings['image'], 'imagePullPolicy': 'IfNotPresent',
+            'command': ['/opt/hermes/.venv/bin/hermes', 'dashboard', '--host', '0.0.0.0',
+                        '--port', '9119', '--no-open', '--skip-build'],
+            'envFrom': [{'secretRef': {'name': 'hermes-dashboard-auth'}}],
+            'env': [{'name': 'HOME', 'value': '/opt/data'}, {'name': 'HERMES_HOME', 'value': '/opt/data'},
+                    {'name': 'TZ', 'value': settings['timezone']}],
+            'volumeMounts': [{'name': 'data', 'mountPath': '/opt/data', 'subPath': 'hermes-home'},
+                             {'name': 'dashboard-tmp', 'mountPath': '/tmp'}],
+            'resources': {'requests': {'cpu': '100m', 'memory': '256Mi'},
+                          'limits': {'cpu': '1', 'memory': '1Gi'}},
+            'securityContext': {'allowPrivilegeEscalation': False, 'readOnlyRootFilesystem': True,
+                                'capabilities': {'drop': ['ALL']}},
+            'readinessProbe': {'tcpSocket': {'port': 9119}, 'initialDelaySeconds': 20,
+                              'periodSeconds': 15, 'timeoutSeconds': 5},
+        }
+        deployment['spec']['template']['spec']['containers'].append(dashboard)
+        deployment['spec']['template']['spec']['volumes'].append(
+            {'name': 'dashboard-tmp', 'emptyDir': {'sizeLimit': '512Mi'}})
     if settings.get('image_pull_secret'):
         deployment['spec']['template']['spec']['imagePullSecrets'] = [{'name': settings['image_pull_secret']}]
     objects = [
