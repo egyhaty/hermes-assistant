@@ -32,6 +32,13 @@ def seed():
   c['search'].update(search_terms=['DevOps Engineer','Linux System Administrator','Kubernetes Engineer'],search_location='United Arab Emirates',easy_apply_only=True,current_experience=-1,did_masters=False,switch_number=10,pause_after_filters=False)
   c['settings'].update(auto_manage_driver=False,run_in_background=False,stop_before_submit=False,run_non_stop=False,keep_screen_awake=False,follow_companies=False,click_gap=2,safe_mode=False,log_level='WARNING')
   c['secrets'].update(username='username@example.com',password='example_password',use_AI=False,llm_model='nvidia/nemotron-3-ultra-550b-a55b:free',llm_api_key='',llm_api_url='https://openrouter.ai/api/v1')
+  facts=Path('/etc/job-profile/profile.json')
+  if facts.is_file():
+   private=json.loads(facts.read_text())
+   for section in ('personals','questions','search'):
+    if isinstance(private.get(section),dict):c[section].update(private[section])
+  resume=Path('/etc/job-profile/resume.pdf')
+  if resume.is_file() and not Path('/data/resume.pdf').exists():Path('/data/resume.pdf').write_bytes(resume.read_bytes())
   p.write_text(json.dumps(c,indent=2))
 
 def check_password(request):

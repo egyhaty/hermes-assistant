@@ -13,8 +13,8 @@ def render(image):
  'ports':[{'name':'http','containerPort':9118}],
  'resources':{'requests':{'cpu':'250m','memory':'512Mi'},'limits':{'cpu':'1','memory':'2Gi'}},
  'readinessProbe':{'httpGet':{'path':'/health','port':9118},'initialDelaySeconds':15,'periodSeconds':10},
- 'volumeMounts':[{'name':'data','mountPath':'/data'},{'name':'tmp','mountPath':'/tmp'},{'name':'shm','mountPath':'/dev/shm'}]}],
- 'volumes':[{'name':'data','persistentVolumeClaim':{'claimName':'hermes-jobs-data'}},{'name':'tmp','emptyDir':{'sizeLimit':'512Mi'}},{'name':'shm','emptyDir':{'medium':'Memory','sizeLimit':'256Mi'}}]}
+ 'volumeMounts':[{'name':'data','mountPath':'/data'},{'name':'tmp','mountPath':'/tmp'},{'name':'shm','mountPath':'/dev/shm'},{'name':'profile','mountPath':'/etc/job-profile','readOnly':True}]}],
+ 'volumes':[{'name':'profile','secret':{'secretName':'hermes-jobs-profile','optional':True,'defaultMode':288}},{'name':'data','persistentVolumeClaim':{'claimName':'hermes-jobs-data'}},{'name':'tmp','emptyDir':{'sizeLimit':'512Mi'}},{'name':'shm','emptyDir':{'medium':'Memory','sizeLimit':'256Mi'}}]}
  objects=[{'apiVersion':'v1','kind':'PersistentVolumeClaim','metadata':{**meta('hermes-jobs-data'),'annotations':{'argocd.argoproj.io/sync-options':'Prune=false,Delete=false'}},'spec':{'accessModes':['ReadWriteOnce'],'storageClassName':'longhorn','resources':{'requests':{'storage':'5Gi'}}}},
  {'apiVersion':'apps/v1','kind':'Deployment','metadata':meta(name),'spec':{'replicas':0,'strategy':{'type':'Recreate'},'selector':{'matchLabels':labels},'template':{'metadata':{'labels':labels},'spec':pod}}},
  {'apiVersion':'v1','kind':'Service','metadata':meta(name),'spec':{'selector':labels,'ports':[{'name':'http','port':80,'targetPort':9118}]}},
