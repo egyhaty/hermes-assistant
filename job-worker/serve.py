@@ -1,9 +1,10 @@
 """Authenticated job panel and private remote desktop; no automatic run at startup."""
-import asyncio,base64,hashlib,hmac,json,os,signal,subprocess,sys,time
+import asyncio,base64,hashlib,hmac,json,os,signal,subprocess,sys,time,fcntl
 from pathlib import Path
 from aiohttp import web,ClientSession,WSMsgType
 from worker_guard import validate,profile_digest
 PROCS=[]
+DATA_LOCK=None
 PUBLIC='https://hermes.murabba.net'
 HTML='''<!doctype html><meta charset="utf-8"><title>Job Applications</title>
 <body dir="rtl" style="max-width:800px;margin:50px auto;font:20px sans-serif">
@@ -18,6 +19,14 @@ def launch(args):
  p=subprocess.Popen(args,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL);PROCS.append(p);return p
 
 def seed():
+ global DATA_LOCK
+ DATA_LOCK=open('/data/.worker-exclusive.lock','a')
+ fcntl.flock(DATA_LOCK.fileno(),fcntl.LOCK_EX|fcntl.LOCK_NB)
+ # One worker owns the persistent profile; remove only stale singleton links.
+ # No cookies, login data or session files are read or changed here.
+ for name in ('SingletonLock','SingletonSocket','SingletonCookie'):
+  path=Path('/data/chrome')/name
+  if path.is_symlink() or path.exists():path.unlink()
  os.umask(0o077);Path('/data').mkdir(exist_ok=True);Path('/tmp/runtime').mkdir(mode=0o700,exist_ok=True)
  for d in ('logs','all excels','all resumes/default','chrome'):(Path('/data')/d).mkdir(parents=True,exist_ok=True)
  p=Path('/data/user_config.json')

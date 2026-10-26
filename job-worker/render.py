@@ -5,7 +5,7 @@ from pathlib import Path
 def render(image):
  if '@sha256:' not in image:raise ValueError('Immutable scanned image required')
  ns='hermes';name='hermes-jobs';labels={'app.kubernetes.io/name':name};meta=lambda n:{'name':n,'namespace':ns}
- pod={'nodeSelector':{'kubernetes.io/hostname':'devops'},'automountServiceAccountToken':False,'terminationGracePeriodSeconds':30,
+ pod={'hostname':'hermes-jobs','nodeSelector':{'kubernetes.io/hostname':'devops'},'automountServiceAccountToken':False,'terminationGracePeriodSeconds':30,
  'imagePullSecrets':[{'name':'hermes-registry'}],
  'securityContext':{'runAsNonRoot':True,'runAsUser':10000,'runAsGroup':10000,'fsGroup':10000,'fsGroupChangePolicy':'OnRootMismatch','seccompProfile':{'type':'Localhost','localhostProfile':'hermes-jobs-browser.json'}},
  'containers':[{'name':'jobs','image':image,'envFrom':[{'secretRef':{'name':'hermes-jobs-auth'}},{'secretRef':{'name':'hermes-free-api'}}],
