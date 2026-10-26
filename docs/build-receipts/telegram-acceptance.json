@@ -1,0 +1,13 @@
+{
+  "date": "2026-10-26",
+  "platform": "telegram",
+  "provider": "openai-codex",
+  "model": "gpt-6.1-sol",
+  "owner_confirmed_response": "جاهز",
+  "model_api_calls_in_test_turn": 1,
+  "gateway_replicas": 1,
+  "restart_sqlite_marker_preserved": true,
+  "argo": "Synced/Healthy; sync Succeeded",
+  "unauthorized_intake": "native adapter synthetic non-owner rejected; not a second live account test",
+  "home_channel": "optional onboarding; no schedules configured"
+}

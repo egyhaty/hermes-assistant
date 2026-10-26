@@ -19,7 +19,7 @@ config/deployment.json and deploy/manifest.json use the final private GHCR image
 ## Remaining gates
 
 - Owner onboarding completed; no further token entry is needed.
-- Owner-originated Telegram message/response acceptance remains pending. Native adapter owner/non-owner admission and encrypted in-cluster restore are verified below. Off-cluster disaster recovery/key recovery remains unverified.
+- Owner-originated Telegram message/response acceptance passed: the owner sent the requested Arabic test and confirmed receipt of جاهز. Native adapter owner/non-owner admission and encrypted in-cluster restore also passed. Off-cluster disaster recovery/key recovery remains unverified.
 - Codex `sandbox linux -- /bin/true` failed: bwrap cannot create a new namespace under the restricted pod. Execution remains blocked; no privilege expansion or sandbox bypass was used. A separately reviewed compatible worker is needed.
 
 ## Private image and volume ownership verification
@@ -41,3 +41,7 @@ The helper masks token input, verifies the bot, refuses an existing webhook, and
 ## Telegram and restore acceptance — 26 October
 
 Owner onboarding completed: hermes-credentials contains the two required Telegram keys; getMe verified the token and getWebhookInfo found no webhook. Native TelegramAdapter intake accepted the configured owner and rejected a different synthetic user without any messages sent. Full stopped data-home was archived with AES-256-GCM on hermes-backup, restored onto hermes-restore-check and compared: 551 entries matched; five SQLite databases passed integrity_check. Receipt: docs/build-receipts/restore-result.json. This is an in-cluster restore test; no off-cluster disaster recovery or key recovery has been demonstrated. The effective runtime policy was verified as ignore after fresh ConfigMap loading and plugin discovery. The gateway was activated with a single replica. A SQLite marker survived transition to the real Deployment. A second rollout exposed that /usr/bin/tini dispatches to s6 and is incompatible with this restricted non-root startup. It was reverted to the verified bootstrap. The PID1 child-reaping warning remains a runtime limitation; no privileges were expanded. Process readiness alone does not prove a Telegram reply.
+
+## Live Telegram acceptance completed
+
+The final running single-replica gateway connected in polling mode. After its restart, the SQLite marker persisted. On 26 October the owner sent the Arabic exact-response test; the gateway used openai-codex/gpt-6.1-sol, completed one API call in the recorded turn, and sent the four-character response. The owner confirmed receipt of جاهز. Argo reports Synced/Healthy with successful manual sync. No model API key or paid fallback was introduced. Telegram home-channel onboarding is optional; /sethome selects a destination but does not register a schedule. No cron jobs or cross-platform deliveries have been configured.
