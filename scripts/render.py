@@ -75,6 +75,7 @@ def render(settings, root=ROOT):
             'initialDelaySeconds': 10, 'periodSeconds': 15, 'timeoutSeconds': 5},
     }
     if settings['provider'] == 'openrouter':
+        config['auxiliary'] = {'free_only': True}
         container['envFrom'].append({'secretRef': {'name': 'hermes-free-api'}})
     init_code = """from pathlib import Path
 import os
