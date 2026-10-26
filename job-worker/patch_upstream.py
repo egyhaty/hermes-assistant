@@ -104,3 +104,10 @@ s=s.replace('setRunningUI(s.running, s.pid); })', 'setRunningUI(s.running, s.pid
 s=s.replace('Tip: save your settings on the other tabs before starting.', 'After editing settings, review your profile at /jobs/ and click Complete profile setup before starting again.')
 s=s.replace("        text: 'After editing settings, review your profile at /jobs/ and click Complete profile setup before starting again.' }));", "        text: 'After editing settings, review your profile at /jobs/ and click Complete profile setup before starting again.' }));")
 p.write_text(s)
+
+# Upstream catches top-level failures and can still return exit code zero.
+# Preserve the real failure reason independently of that exit status.
+p=root/'runAiBot.py';s=p.read_text();s=s.replace('from run_status import limit_reached', 'from run_status import limit_reached, stopped as record_run_failure')
+s=s.replace('        critical_error_log("In Applier Main", e)', '        record_run_failure("Application error: "+type(e).__name__)\n        critical_error_log("In Applier Main", e)')
+s=s.replace('        logger.error("The browser window was closed or the session became invalid. Exiting.", exc_info=e)', '        record_run_failure("Browser window closed or session invalid")\n        logger.error("The browser window was closed or the session became invalid. Exiting.", exc_info=e)')
+p.write_text(s)
