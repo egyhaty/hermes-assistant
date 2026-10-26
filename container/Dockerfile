@@ -15,6 +15,10 @@ RUN rm -rf /opt/hermes/tools/python-3.14.9+20261021-linux-x64/lib/python3.14/sit
 # Upstream exports placeholder distribution metadata although the CLI/release
 # is v0.22.5. Record the real, verified release in that metadata.
 RUN python3 -c 'import shutil; from pathlib import Path; p=Path("/opt/hermes/hermes_agent-0.0.0.dist-info/METADATA"); s=p.read_text(); assert "Version: 0.0.0\n" in s; p.write_text(s.replace("Version: 0.0.0\n","Version: 0.22.5\n",1)); shutil.move(str(p.parent),str(p.parent.with_name("hermes_agent-0.22.5.dist-info")))'
+# PDF capability is baked into the exact Hermes interpreter, never installed at startup.
+COPY container/pdf-requirements.txt /opt/karem-build/pdf-requirements.txt
+RUN apt-get update && apt-get install -y --no-install-recommends libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz-subset0 fonts-noto-core fonts-dejavu-core fontconfig poppler-utils && rm -rf /var/lib/apt/lists/* && fc-cache -f
+RUN /opt/hermes/tools/uv-0.13.5-linux-x64/uv pip install --python /opt/hermes/.venv/bin/python -r /opt/karem-build/pdf-requirements.txt
 ARG CODEX_VERSION
 RUN test -n "$CODEX_VERSION" && npm install --prefix /usr/local -g "@openai/codex@${CODEX_VERSION}" && npm cache clean --force
 COPY --chown=0:0 config/SOUL.md /opt/karem/config/SOUL.md
@@ -25,6 +29,7 @@ RUN chmod -R a+rX,go-w /opt/karem && \
     test -x /opt/hermes/.venv/bin/hermes && \
     test -x /opt/hermes/.venv/bin/python && \
     test "$(id -u hermes)" = "10000" && \
+    /opt/hermes/.venv/bin/python -c "import reportlab,weasyprint,pypdf; from weasyprint.text.fonts import FontConfiguration; FontConfiguration()" && \
     codex --version
 ENV HERMES_HOME=/opt/data
 ENV HOME=/opt/data

@@ -9,7 +9,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 
 def validate():
-    expected = {'karem-jobs', 'karem-study', 'karem-personal', 'karem-tickets', 'karem-infra', 'karem-codex'}
+    expected = {'karem-jobs', 'karem-study', 'karem-personal', 'karem-tickets', 'karem-infra', 'karem-codex', 'karem-pdf'}
     found = set()
     for path in (ROOT / 'skills').glob('*/SKILL.md'):
         content = path.read_text()
@@ -35,7 +35,7 @@ def validate():
     for file in ['README.md', 'docs/OPERATIONS.md', 'docs/REPOSITORIES.md', 'upstream.lock.json']:
         if not (ROOT / file).is_file():
             raise ValueError('required file absent: ' + file)
-    print('PASS: six skill definitions, Python syntax, JSON and required project files')
+    print(f'PASS: {len(found)} skill definitions, Python syntax, JSON and required project files')
     print('NOT TESTED: container build/startup, real provider, Telegram, Codex sandbox, cluster/PVC restore')
 
 if __name__ == '__main__':

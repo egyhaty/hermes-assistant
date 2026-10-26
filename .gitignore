@@ -13,3 +13,5 @@ secrets/
 
 config/profile.json
 config/deployment.private.json
+
+output/
