@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def render(settings, root=ROOT):
     required = {'namespace', 'image', 'provider', 'model', 'timezone', 'storage_class', 'storage_size', 'secret_name'}
-    if not required.issubset(settings) or set(settings) - required - {'image_pull_secret', 'dashboard', 'dashboard_host'} or not all(isinstance(v, str) for v in settings.values()):
+    if not required.issubset(settings) or set(settings) - required - {'image_pull_secret', 'dashboard', 'dashboard_host', 'groq'} or not all(isinstance(v, str) for v in settings.values()):
         raise ValueError('settings must contain exactly the documented string fields')
     if 'REQUIRED_' in json.dumps(settings):
         raise ValueError('fill required deployment values first')
@@ -22,9 +22,7 @@ def render(settings, root=ROOT):
     if not re.fullmatch(r'[1-9][0-9]*(?:Gi|Mi)', settings['storage_size']):
         raise ValueError('storage_size must be a positive Mi or Gi quantity')
     if settings['provider'] not in ('openai-codex', 'openrouter'):
-        raise ValueError('only the authorized subscription or free OpenRouter provider is allowed')
-    if settings['provider'] == 'openrouter' and settings['model'] != 'openrouter/free' and not settings['model'].endswith(':free'):
-        raise ValueError('OpenRouter must use a free-only model; paid models are refused')
+        raise ValueError('select an explicitly supported primary provider')
     if not settings['model'].strip():
         raise ValueError('provider and model must be chosen explicitly')
     if settings.get('dashboard', 'disabled') not in ('enabled', 'disabled'):
@@ -92,8 +90,18 @@ def render(settings, root=ROOT):
     }
     if settings['provider'] == 'openrouter':
         config['model'].update(base_url='https://openrouter.ai/api/v1', api_mode='chat_completions')
-        config['auxiliary'] = {'free_only': True}
+        if settings['model'] == 'openrouter/free' or settings['model'].endswith(':free'):
+            config['auxiliary'] = {'free_only': True}
         container['envFrom'].append({'secretRef': {'name': 'hermes-free-api'}})
+    if settings.get('groq', 'disabled') not in ('enabled', 'disabled'):
+        raise ValueError('groq must be enabled or disabled')
+    if settings.get('groq') == 'enabled':
+        container['envFrom'].append({'secretRef': {'name': 'hermes-groq'}})
+        config['custom_providers'] = [{'name': 'groq', 'base_url': 'https://api.groq.com/openai/v1',
+            'key_env': 'GROQ_API_KEY', 'api_mode': 'chat_completions',
+            'model': 'openai/gpt-oss-120b', 'models': ['openai/gpt-oss-120b']}]
+        config['fallback_model'] = {'provider': 'groq', 'model': 'openai/gpt-oss-120b',
+            'base_url': 'https://api.groq.com/openai/v1', 'key_env': 'GROQ_API_KEY', 'api_mode': 'chat_completions'}
     init_code = """from pathlib import Path
 import os
 root = Path('/mnt/pvc')

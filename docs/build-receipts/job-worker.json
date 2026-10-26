@@ -1,8 +1,8 @@
 {
-  "image": "ghcr.io/egyhaty/hermes-assistant-jobs@sha256:db22f0b35714e76388d2092ee0229875b5cd3e5453b1ac36789d08e881355aea",
+  "image": "ghcr.io/egyhaty/hermes-assistant-jobs@sha256:369296745bbf6dd0548922e2f71c854c5b5a79d8beb5cb32f7517b9fea04ebd8",
   "upstream_revision": "e0b2401a7a7b333eab0b518e80be5285c3ee85c5",
-  "source_revision": "625f63f4c4dc72ab33cf0a055883aaa03203588d",
-  "build_and_scan": "https://github.com/egyhaty/hermes-assistant/actions/runs/40323369285",
+  "source_revision": "927c44ac5c29afbe21b060d52b5193143fb3eaf2",
+  "build_and_scan": "https://github.com/egyhaty/hermes-assistant/actions/runs/40324898384",
   "patchable_high_critical_findings": 0,
-  "runtime_acceptance": "Deployed: private Xauthority mode 0600; PyAutoGUI import and 1440x900 display passed after rollout; LinkedIn feed and profile readiness preserved. Application process stopped; no submissions verified."
+  "runtime_acceptance": "Deployed on Kubernetes; private Xauthority and PyAutoGUI passed; Groq gpt-oss-120b synthetic READY response and actual jobs LangChain structured skill extraction passed. No applications sent by these tests."
 }

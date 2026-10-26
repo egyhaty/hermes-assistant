@@ -9,5 +9,6 @@
   "secret_name": "hermes-credentials",
   "image_pull_secret": "hermes-registry",
   "dashboard": "enabled",
-  "dashboard_host": "hermes.murabba.net"
+  "dashboard_host": "hermes.murabba.net",
+  "groq": "enabled"
 }

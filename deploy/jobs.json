@@ -51,7 +51,7 @@
             "containers": [
               {
                 "name": "jobs",
-                "image": "ghcr.io/egyhaty/hermes-assistant-jobs@sha256:db22f0b35714e76388d2092ee0229875b5cd3e5453b1ac36789d08e881355aea",
+                "image": "ghcr.io/egyhaty/hermes-assistant-jobs@sha256:369296745bbf6dd0548922e2f71c854c5b5a79d8beb5cb32f7517b9fea04ebd8",
                 "envFrom": [
                   {
                     "secretRef": {
@@ -61,6 +61,12 @@
                   {
                     "secretRef": {
                       "name": "hermes-free-api"
+                    }
+                  },
+                  {
+                    "secretRef": {
+                      "name": "hermes-jobs-groq",
+                      "optional": true
                     }
                   }
                 ],

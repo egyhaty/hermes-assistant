@@ -217,7 +217,7 @@ class DeploymentTests(unittest.TestCase):
             with self.subTest(key=key), self.assertRaises(ValueError):
                 render.render(settings)
 
-    def test_free_provider_rejects_paid_models_and_dashboard_has_separate_secrets(self):
+    def test_provider_choice_and_dashboard_have_separate_secrets(self):
         settings = self.settings()
         settings.update(provider='openrouter', model='openrouter/free', dashboard='enabled')
         manifest = render.render(settings)
@@ -228,9 +228,16 @@ class DeploymentTests(unittest.TestCase):
         self.assertFalse(any(m['name'] in ('private', 'managed', 'mail') for m in dashboard['volumeMounts']))
         self.assertFalse(dashboard['securityContext']['allowPrivilegeEscalation'])
         self.assertFalse(any(x['kind'] in ('Service', 'Ingress') for x in manifest['items']))
-        settings['model'] = 'paid/model'
-        with self.assertRaises(ValueError):
-            render.render(settings)
+        settings.update(model='paid/model', groq='enabled')
+        manifest = render.render(settings)
+        config = json.loads(next(x for x in manifest['items'] if x['kind'] == 'ConfigMap')['data']['config.yaml'])
+        self.assertEqual(config['model']['default'], 'paid/model')
+        self.assertNotIn('auxiliary', config)
+        self.assertEqual(config['fallback_model']['provider'], 'groq')
+        pod = next(x for x in manifest['items'] if x['kind'] == 'Deployment')['spec']['template']['spec']
+        gateway, dashboard = pod['containers']
+        self.assertIn({'secretRef': {'name': 'hermes-groq'}}, gateway['envFrom'])
+        self.assertNotIn('hermes-groq', str(dashboard))
 
     def test_public_dashboard_hostname_requires_enabled_dashboard(self):
         settings = self.settings()
