@@ -29,7 +29,7 @@ def require_ready():
  if error:return error
  try:ready=(DATA/'profile-ready').read_text()
  except OSError:return 'Complete the profile setup on /jobs/ before the first automatic run.'
- if ready!=profile_digest():return 'Profile changed: complete profile setup again before running.'
+ if ready!=profile_digest():return 'Profile changed: review your saved profile at /jobs/ and click Complete profile setup, then return here and Start.'
  try:
   with urllib.request.urlopen('http://127.0.0.1:9222/json',timeout=3) as r:pages=json.load(r)
   logged_in=any(urllib.parse.urlsplit(x.get('url','')).hostname=='www.linkedin.com' and urllib.parse.urlsplit(x.get('url','')).path.startswith('/feed') for x in pages)

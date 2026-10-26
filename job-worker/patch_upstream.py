@@ -82,3 +82,25 @@ p=root/'runAiBot.py';s=p.read_text();s=s.replace('_WORKER_INSPECTED = [0]', '_WO
 s=s.replace('if easy_applied_count >= 10 or _WORKER_INSPECTED[0] >= 60', 'if easy_applied_count >= 10 or _WORKER_SUBMIT_ATTEMPTS[0] >= 10 or _WORKER_INSPECTED[0] >= 60')
 s=s.replace('                                    if wait_xp_click(modal, submit_button_xpath, 2, scrollTop=True):', '                                    if any(el.is_displayed() for el in modal.find_elements(By.XPATH,submit_button_xpath)):\n                                        if _WORKER_SUBMIT_ATTEMPTS[0]>=10: raise StoppedBeforeSubmit("Run submission-attempt limit reached.")\n                                        _WORKER_SUBMIT_ATTEMPTS[0]+=1\n                                    if wait_xp_click(modal, submit_button_xpath, 2, scrollTop=True):')
 p.write_text(s)
+
+# Preserve the exact exit reason for the control panel instead of hiding it.
+p=root/'app.py';s=p.read_text();s='from run_status import started as record_started, stopped as record_stopped, exited as record_exited, read as read_run_state\n'+s
+s=s.replace('    # Process has exited; clean up tracking + PID file.', '    record_exited(_bot_proc.returncode)\n    # Process has exited; clean up tracking + PID file.')
+s=s.replace('            _bot_proc = subprocess.Popen(_bot_command(), **popen_kwargs)', '            record_started()\n            _bot_proc = subprocess.Popen(_bot_command(), **popen_kwargs)')
+s=s.replace('            _terminate(_bot_proc)', '            record_stopped("Stopped by user")\n            _terminate(_bot_proc)')
+s=s.replace('return jsonify({"running": running, "pid": pid})', 'return jsonify({"running": running, "pid": pid, "stop_reason": read_run_state().get("stop_reason"), "exit_code": read_run_state().get("exit_code")})')
+p.write_text(s)
+p=root/'runAiBot.py';s=p.read_text();s='from run_status import limit_reached\n'+s
+s=s.replace('if easy_applied_count >= 10 or _WORKER_SUBMIT_ATTEMPTS[0] >= 10 or _WORKER_INSPECTED[0] >= 60 or time.monotonic() - _WORKER_STARTED > 900: return', 'if limit_reached(easy_applied_count,_WORKER_SUBMIT_ATTEMPTS[0],_WORKER_INSPECTED[0],time.monotonic()-_WORKER_STARTED): return')
+lines=s.splitlines()
+for i,line in enumerate(lines):
+ if line.strip().startswith('pyautogui.alert("Please consider sponsoring this project'):
+  lines[i]='    print("Job run starting. Progress appears in Activity log.",flush=True)'
+ elif line.strip()=='pyautogui.alert(msg, "Exiting..")':
+  lines[i]='        print("Job run finished. See summary in logs.",flush=True)'
+s='\n'.join(lines)+'\n';p.write_text(s)
+p=root/'templates/control_panel.html';s=p.read_text()
+s=s.replace('setRunningUI(s.running, s.pid); })', 'setRunningUI(s.running, s.pid); if (!s.running && s.stop_reason) document.getElementById("statusText").textContent="Not running: "+s.stop_reason; })')
+s=s.replace('Tip: save your settings on the other tabs before starting.', 'After editing settings, review your profile at /jobs/ and click Complete profile setup before starting again.')
+s=s.replace("        text: 'After editing settings, review your profile at /jobs/ and click Complete profile setup before starting again.' }));", "        text: 'After editing settings, review your profile at /jobs/ and click Complete profile setup before starting again.' }));")
+p.write_text(s)
