@@ -75,3 +75,10 @@ s=s.replace('                                        date_applied = datetime.now
 s=s.replace('                                        if errored == "nose": discard_reason = "Failed to click Submit application 😑"', '                                        discard_reason = "Submit application was not confirmed; not counted as submitted."')
 s=s.replace('                                discard_reason = None', '                                discard_reason = "Form error; not submitted." if sys.exc_info()[0] is not None else None')
 p.write_text(s)
+
+# Count attempts as well as confirmed successes: a delayed confirmation must not
+# permit more than ten actual submit clicks during one run.
+p=root/'runAiBot.py';s=p.read_text();s=s.replace('_WORKER_INSPECTED = [0]', '_WORKER_INSPECTED = [0]\n_WORKER_SUBMIT_ATTEMPTS = [0]')
+s=s.replace('if easy_applied_count >= 10 or _WORKER_INSPECTED[0] >= 60', 'if easy_applied_count >= 10 or _WORKER_SUBMIT_ATTEMPTS[0] >= 10 or _WORKER_INSPECTED[0] >= 60')
+s=s.replace('                                    if wait_xp_click(modal, submit_button_xpath, 2, scrollTop=True):', '                                    if any(el.is_displayed() for el in modal.find_elements(By.XPATH,submit_button_xpath)):\n                                        if _WORKER_SUBMIT_ATTEMPTS[0]>=10: raise StoppedBeforeSubmit("Run submission-attempt limit reached.")\n                                        _WORKER_SUBMIT_ATTEMPTS[0]+=1\n                                    if wait_xp_click(modal, submit_button_xpath, 2, scrollTop=True):')
+p.write_text(s)
