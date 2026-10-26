@@ -12,8 +12,10 @@ class JobWorkerTests(unittest.TestCase):
   self.config={'personals':{'first_name':'Owner','last_name':'Fixture','phone_number':'123','current_city':'Cairo'},'questions':{'years_of_experience':'3','require_visa':'Yes','legally_authorized':'No','notice_period':30},'secrets':{'use_AI':False},'search':{'easy_apply_only':True}}
   self.save()
  def save(self):(self.data/'user_config.json').write_text(json.dumps(self.config))
- def test_missing_work_authorization_blocks_run(self):
-  self.config['questions']['legally_authorized']='';self.save();self.assertIn('legally_authorized',self.g.require_ready())
+ def test_missing_sponsorship_answer_blocks_run(self):
+  self.config['questions']['require_visa']='';self.save();self.assertIn('require_visa',self.g.require_ready())
+ def test_unknown_work_permit_remains_unanswered(self):
+  self.config['questions']['legally_authorized']='';self.save();self.assertIsNone(self.g.validate());self.assertEqual(json.loads((self.data/'user_config.json').read_text())['questions']['legally_authorized'],'')
  def test_paid_model_is_rejected(self):
   self.config['secrets']={'use_AI':True,'llm_model':'paid-model'};self.save();self.assertIn('free',self.g.validate())
  def test_profile_or_resume_change_invalidates_setup(self):

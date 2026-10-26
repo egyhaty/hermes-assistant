@@ -459,6 +459,22 @@
           "op": "SCMP_CMP_MASKED_EQ"
         }
       ]
+    },
+    {
+      "names": [
+        "openat2",
+        "chroot"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": []
+    },
+    {
+      "names": [
+        "clone3"
+      ],
+      "action": "SCMP_ACT_ERRNO",
+      "errnoRet": 38,
+      "args": []
     }
   ]
 }

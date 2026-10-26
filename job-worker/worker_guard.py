@@ -8,12 +8,12 @@ def profile_digest():
 def validate():
  try:c=json.loads(CONFIG.read_text())
  except Exception:return 'Save your application profile first.'
- required={'personals':['first_name','last_name','phone_number','current_city'], 'questions':['years_of_experience','require_visa','legally_authorized','notice_period']}
+ required={'personals':['first_name','last_name','phone_number','current_city'], 'questions':['years_of_experience','require_visa','notice_period']}
  for section,keys in required.items():
   for key in keys:
    if c.get(section,{}).get(key) in (None,''):return 'Missing verified profile field: '+key
  for k in ('require_visa','legally_authorized'):
-  if c['questions'][k] not in ('Yes','No'):return 'Set work authorization and sponsorship answers explicitly.'
+  if c['questions'].get(k) not in ('Yes','No',None,''):return 'Use explicit Yes/No or leave an unknown authorization answer blank.'
  if not (DATA/'resume.pdf').is_file() or not (DATA/'resume.pdf').read_bytes().startswith(b'%PDF-'):return 'Upload your current PDF resume.'
  sec=c.get('secrets',{})
  if sec.get('use_AI') and not str(sec.get('llm_model','')).endswith(':free'):return 'Only an explicitly free OpenRouter model is allowed.'
