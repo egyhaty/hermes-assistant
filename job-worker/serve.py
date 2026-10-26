@@ -165,7 +165,11 @@ def main():
  for name in ('USERNAME','PASSWORD_HASH','CONTROL_TOKEN'):
   if not os.environ.get(name):raise SystemExit('Missing required worker authentication')
  seed()
- launch(['Xvfb',':99','-screen','0','1440x900x24','-nolisten','tcp'])
+ # Xlib requires an authority file, and every GUI child inherits this cookie.
+ authority=Path('/data/.Xauthority');authority.touch(mode=0o600,exist_ok=True);authority.chmod(0o600)
+ os.environ['XAUTHORITY']=str(authority)
+ subprocess.run(['xauth','-f',str(authority),'add',':99','MIT-MAGIC-COOKIE-1',secrets.token_hex(16)],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+ launch(['Xvfb',':99','-screen','0','1440x900x24','-nolisten','tcp','-auth',str(authority)])
  time.sleep(1)
  launch(['chromium','--user-data-dir=/data/chrome','--remote-debugging-address=127.0.0.1','--remote-debugging-port=9222','--no-first-run','--no-default-browser-check','--disable-dev-shm-usage','https://www.linkedin.com/login'])
  launch(['x11vnc','-display',':99','-localhost','-forever','-shared','-nopw','-rfbport','5900'])
