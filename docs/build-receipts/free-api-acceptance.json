@@ -1,0 +1,12 @@
+{
+  "date": "2026-10-26",
+  "provider": "openrouter",
+  "model": "openrouter/free",
+  "native_cli_response": "FREE_API_OK",
+  "exit_code": 0,
+  "paid_fallback_configured": false,
+  "anonymous_config_http_status": 401,
+  "dashboard_login_page_verified": true,
+  "public_service_or_ingress": false,
+  "owner_dashboard_login_confirmed": false
+}
