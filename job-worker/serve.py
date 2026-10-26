@@ -1,5 +1,5 @@
 """Authenticated job panel and private remote desktop; no automatic run at startup."""
-import asyncio,base64,hashlib,hmac,json,os,signal,subprocess,sys,time,fcntl
+import asyncio,base64,hashlib,hmac,json,os,signal,subprocess,sys,time,fcntl,secrets
 from pathlib import Path
 from aiohttp import web,ClientSession,WSMsgType
 from worker_guard import validate,profile_digest
@@ -60,7 +60,13 @@ def check_password(request):
   actual=hashlib.scrypt(p.encode(),salt=base64.b64decode(fields[4]),n=16384,r=8,p=1,dklen=32)
   return hmac.compare_digest(u,os.environ['USERNAME']) and hmac.compare_digest(actual,base64.b64decode(fields[5]))
  except Exception:return False
+LOGIN_HTML='<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><title>دخول لوحة الوظائف</title><body style="max-width:440px;margin:80px auto;font:20px sans-serif"><h1>لوحة تقديم الوظائف</h1><p>ادخل بنفس اسم المستخدم وكلمة مرور لوحة هرمز.</p><form method="post" action="/jobs/login"><label>اسم المستخدم<input name="username" value="karem" autocomplete="username" required></label><br><label>كلمة المرور<input name="password" type="password" autocomplete="current-password" required></label><br><button>دخول</button></form><p>بيانات دخول LinkedIn تُكتب داخل المتصفح البعيد بعد الدخول هنا.</p></body></html>'
 ATTEMPTS={}
+SESSIONS={}
+def has_session(request):
+ token=request.cookies.get('jobs_session','')
+ expires=SESSIONS.get(token,0)
+ return bool(expires>time.time())
 @web.middleware
 async def auth(request,handler):
  if request.path=='/health':
@@ -73,15 +79,36 @@ async def auth(request,handler):
   if not hmac.compare_digest(token,'Bearer '+os.environ['CONTROL_TOKEN']):raise web.HTTPUnauthorized()
  else:
   if not request.path.startswith('/jobs/'):raise web.HTTPNotFound()
-  peer=request.remote;now=time.monotonic();history=[x for x in ATTEMPTS.get(peer,[]) if now-x<60]
-  if len(history)>=20:raise web.HTTPTooManyRequests()
-  if not await asyncio.to_thread(check_password,request):
-   ATTEMPTS[peer]=history+[now]
-   raise web.HTTPUnauthorized(headers={'WWW-Authenticate':'Basic realm="Karem Job Worker", charset="UTF-8"'})
   if request.method not in ('GET','HEAD') and request.headers.get('Origin')!=PUBLIC:raise web.HTTPForbidden(text='Origin check failed')
+  if request.path=='/jobs/login':return await handler(request)
+  if request.headers.get('Upgrade','').lower()=='websocket' and request.headers.get('Origin')!=PUBLIC:raise web.HTTPForbidden()
+  if not has_session(request) and not await asyncio.to_thread(check_password,request):
+   if request.method=='GET' and '/api/' not in request.path and request.headers.get('Upgrade','').lower()!='websocket':raise web.HTTPSeeOther('/jobs/login')
+   raise web.HTTPUnauthorized()
  return await handler(request)
 
 async def handle(request):
+ if request.path=='/jobs/login':
+  if request.method=='GET':
+   if has_session(request):raise web.HTTPSeeOther('/jobs/')
+   return web.Response(text=LOGIN_HTML,content_type='text/html',headers={'Cache-Control':'no-store'})
+  if request.method!='POST':raise web.HTTPMethodNotAllowed(request.method,['GET','POST'])
+  peer=request.remote;now=time.monotonic();history=[x for x in ATTEMPTS.get(peer,[]) if now-x<60]
+  if len(history)>=20:raise web.HTTPTooManyRequests()
+  form=await request.post();u=str(form.get('username',''));p=str(form.get('password',''))
+  if len(u)+len(p)>1024:raise web.HTTPBadRequest()
+  import types
+  check=types.SimpleNamespace(headers={'Authorization':'Basic '+base64.b64encode((u+':'+p).encode()).decode()})
+  if not await asyncio.to_thread(check_password,check):
+   ATTEMPTS[peer]=history+[now]
+   return web.Response(text=LOGIN_HTML.replace('<h1>','<p>بيانات الدخول غير صحيحة.</p><h1>',1),content_type='text/html',status=401,headers={'Cache-Control':'no-store'})
+  session=secrets.token_urlsafe(32)
+  for key,expiry in list(SESSIONS.items()):
+   if expiry<time.time():SESSIONS.pop(key,None)
+  SESSIONS[session]=time.time()+21600
+  response=web.HTTPSeeOther('/jobs/');response.set_cookie('jobs_session',session,max_age=21600,path='/jobs/',secure=True,httponly=True,samesite='Strict');return response
+ if request.path=='/jobs/logout' and request.method=='POST':
+  SESSIONS.pop(request.cookies.get('jobs_session',''),None);response=web.HTTPSeeOther('/jobs/login');response.del_cookie('jobs_session',path='/jobs/');return response
  if request.path=='/jobs/':return web.Response(text=HTML,content_type='text/html')
  if request.path=='/jobs/resume' and request.method=='POST':
   reader=await request.multipart();part=await reader.next()
