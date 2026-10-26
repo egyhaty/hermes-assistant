@@ -41,6 +41,7 @@ def render(settings, root=ROOT):
         '_config_version': 51,  # Verified against the selected Hermes v0.22.5 image.
         'model': {'provider': settings['provider'], 'default': settings['model']},
         'database': {'journal_mode': 'delete'},
+        'plugins': {'enabled': ['langfuse'], 'entries': {'langfuse': {'settings': {'end_user_attribution': False}}}},
         'agent': {'max_turns': 5 if settings['provider'] == 'openrouter' else 30, 'gateway_timeout': 900},
         'max_concurrent_sessions': 2,
         'group_sessions_per_user': True,
@@ -64,9 +65,11 @@ def render(settings, root=ROOT):
         pvc_spec['storageClassName'] = settings['storage_class']
     container = {
         'name': 'hermes', 'image': settings['image'], 'imagePullPolicy': 'IfNotPresent',
-        'envFrom': [{'secretRef': {'name': settings['secret_name']}}],
+        'envFrom': [{'secretRef': {'name': settings['secret_name']}},
+                    {'secretRef': {'name': 'hermes-langfuse', 'optional': True}}],
         'env': [{'name': 'HERMES_HOME', 'value': '/opt/data'}, {'name': 'HOME', 'value': '/opt/data'},
                 {'name': 'HERMES_TIMEZONE', 'value': settings['timezone']},
+                {'name': 'HERMES_LANGFUSE_CAPTURE', 'value': 'metadata'},
                 {'name': 'TZ', 'value': settings['timezone']},
                 {'name': 'HIMALAYA_CONFIG', 'value': '/opt/data/workspace/himalaya-config/config.toml'}],
         'resources': {'requests': {'cpu': '250m', 'memory': '1Gi'},

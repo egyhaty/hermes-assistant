@@ -7,7 +7,7 @@ Built-in keyless Firecrawl selected for search and extraction. Public Kubernetes
 Persistent boards: karem-work, karem-study, karem-personal. Existing current board preserved. Integration cards initially blocked; automatic dispatch, review dispatch, notification and subscription disabled in managed configuration. No scheduled jobs created.
 
 ## Langfuse
-Official plugin version 2.0.0 pinned to NousResearch/hermes-official-plugins commit e1f16143f164c4db10ea8fc0fc47ff8ac611e9fc. Official installer resolved dependencies; doctor passed import and registration of 11 hooks. Capture explicitly set to metadata in the live private dotenv. Project credentials absent: no live trace delivery verified.
+Official plugin version 2.0.0 pinned to NousResearch/hermes-official-plugins commit e1f16143f164c4db10ea8fc0fc47ff8ac611e9fc. Official installer resolved dependencies; doctor passed import and registration of 11 hooks. Capture explicitly set to metadata in the live private dotenv. Project credentials stored in dedicated Kubernetes Secret and wired to the gateway only. HERMES_LANGFUSE_CAPTURE=metadata is enforced in gateway environment; end_user_attribution=false in managed configuration. Deployment rollout and plugin doctor passed. Synthetic trace f79c5689bc915966fbd5f7fefc2b77fd was received and read back using the current v2 observations API: input contained only omitted/type/chars, userId empty. No model request or real conversation was used in this smoke test. Legacy trace read API returned HTTP 410; v2 observations succeeded. UI onboarding state was preserved privately on PVC across the rollout.
 
 Create a free Langfuse project and enter its project keys using:
 
@@ -15,7 +15,7 @@ Create a free Langfuse project and enter its project keys using:
 python3 /Users/karem/hermes-assistant/scripts/configure_langfuse.py
 ```
 
-Default region EU; select --region us or jp to match the project. Keys are masked and verified against a fixed regional endpoint without redirects, then stored in hermes-langfuse. Secret creation alone does not activate gateway credentials: mount this dedicated Secret only in the gateway, retain metadata capture, and verify a synthetic trace before claiming delivery. Do not enable prompt, response, tool arguments/results or email capture.
+Default region EU; select --region us or jp to match the project. Keys are masked and verified against a fixed regional endpoint without redirects, then stored in hermes-langfuse. The gateway references this optional dedicated Secret; after changing keys restart the deployment, retain metadata capture, and verify a synthetic trace. Do not enable prompt, response, tool arguments/results or email capture.
 
 ## Monitoring
 scripts/cluster_status.py exposes only fixed read-only Prometheus queries and alert metadata. Tested from the gateway against the existing monitoring service, without a Kubernetes service-account token or admin credentials. This helper limits its own requests, not the entire network. No automatic remediation or alerts schedule.
