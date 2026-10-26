@@ -51,11 +51,15 @@
             "containers": [
               {
                 "name": "jobs",
-                "image": "ghcr.io/egyhaty/hermes-assistant-jobs@sha256:d98cf7a1dc9d7f170ac95f9221c06dcdeec5f493385fbfe093f22b5f9a58438c",
+                "image": "ghcr.io/egyhaty/hermes-assistant-jobs@sha256:7ca0886c71e9614b8687ddf43c8c3e5dea9b21d6af4df9a7aefb195ad11ac87b",
                 "env": [
                   {
                     "name": "JOB_RUN_SECONDS",
-                    "value": "900"
+                    "value": "0"
+                  },
+                  {
+                    "name": "JOB_FINISH_SEARCH",
+                    "value": "1"
                   }
                 ],
                 "envFrom": [
@@ -226,6 +230,13 @@
                     "app.kubernetes.io/name": "hermes-karem"
                   }
                 }
+              },
+              {
+                "podSelector": {
+                  "matchLabels": {
+                    "app.kubernetes.io/name": "hermes-jobs-scheduler"
+                  }
+                }
               }
             ],
             "ports": [
@@ -347,6 +358,158 @@
           "referrerPolicy": "same-origin",
           "stsSeconds": 15552000
         }
+      }
+    },
+    {
+      "apiVersion": "batch/v1",
+      "kind": "CronJob",
+      "metadata": {
+        "name": "hermes-jobs-schedule",
+        "namespace": "hermes"
+      },
+      "spec": {
+        "schedule": "0 */6 * * *",
+        "timeZone": "Africa/Cairo",
+        "concurrencyPolicy": "Forbid",
+        "startingDeadlineSeconds": 300,
+        "successfulJobsHistoryLimit": 3,
+        "failedJobsHistoryLimit": 3,
+        "suspend": true,
+        "jobTemplate": {
+          "spec": {
+            "backoffLimit": 0,
+            "ttlSecondsAfterFinished": 86400,
+            "template": {
+              "metadata": {
+                "labels": {
+                  "app.kubernetes.io/name": "hermes-jobs-scheduler"
+                }
+              },
+              "spec": {
+                "restartPolicy": "Never",
+                "automountServiceAccountToken": false,
+                "imagePullSecrets": [
+                  {
+                    "name": "hermes-registry"
+                  }
+                ],
+                "securityContext": {
+                  "runAsNonRoot": true,
+                  "runAsUser": 10000,
+                  "runAsGroup": 10000,
+                  "seccompProfile": {
+                    "type": "RuntimeDefault"
+                  }
+                },
+                "containers": [
+                  {
+                    "name": "scheduler",
+                    "image": "ghcr.io/egyhaty/hermes-assistant-jobs@sha256:7ca0886c71e9614b8687ddf43c8c3e5dea9b21d6af4df9a7aefb195ad11ac87b",
+                    "command": [
+                      "python",
+                      "/opt/worker/scheduler.py"
+                    ],
+                    "env": [
+                      {
+                        "name": "CONTROL_TOKEN",
+                        "valueFrom": {
+                          "secretKeyRef": {
+                            "name": "hermes-jobs-control",
+                            "key": "CONTROL_TOKEN"
+                          }
+                        }
+                      }
+                    ],
+                    "securityContext": {
+                      "readOnlyRootFilesystem": true,
+                      "allowPrivilegeEscalation": false,
+                      "capabilities": {
+                        "drop": [
+                          "ALL"
+                        ]
+                      }
+                    },
+                    "resources": {
+                      "requests": {
+                        "cpu": "10m",
+                        "memory": "32Mi"
+                      },
+                      "limits": {
+                        "cpu": "100m",
+                        "memory": "128Mi"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "apiVersion": "networking.k8s.io/v1",
+      "kind": "NetworkPolicy",
+      "metadata": {
+        "name": "hermes-jobs-scheduler",
+        "namespace": "hermes"
+      },
+      "spec": {
+        "podSelector": {
+          "matchLabels": {
+            "app.kubernetes.io/name": "hermes-jobs-scheduler"
+          }
+        },
+        "policyTypes": [
+          "Ingress",
+          "Egress"
+        ],
+        "ingress": [],
+        "egress": [
+          {
+            "to": [
+              {
+                "podSelector": {
+                  "matchLabels": {
+                    "app.kubernetes.io/name": "hermes-jobs"
+                  }
+                }
+              }
+            ],
+            "ports": [
+              {
+                "protocol": "TCP",
+                "port": 9118
+              }
+            ]
+          },
+          {
+            "to": [
+              {
+                "namespaceSelector": {
+                  "matchLabels": {
+                    "kubernetes.io/metadata.name": "kube-system"
+                  }
+                },
+                "podSelector": {
+                  "matchLabels": {
+                    "k8s-app": "kube-dns"
+                  }
+                }
+              }
+            ],
+            "ports": [
+              {
+                "protocol": "UDP",
+                "port": 53
+              },
+              {
+                "protocol": "TCP",
+                "port": 53
+              }
+            ]
+          }
+        ]
       }
     }
   ]

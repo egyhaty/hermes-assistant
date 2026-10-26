@@ -8,3 +8,15 @@ replicas:
     count: 1
   - name: hermes-jobs
     count: 1
+
+# Owner-authorized four daily automatic search-and-apply cycles.
+patches:
+  - target:
+      group: batch
+      version: v1
+      kind: CronJob
+      name: hermes-jobs-schedule
+    patch: |-
+      - op: replace
+        path: /spec/suspend
+        value: false

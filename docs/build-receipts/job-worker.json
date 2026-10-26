@@ -1,8 +1,8 @@
 {
-  "image": "ghcr.io/egyhaty/hermes-assistant-jobs@sha256:d98cf7a1dc9d7f170ac95f9221c06dcdeec5f493385fbfe093f22b5f9a58438c",
+  "image": "ghcr.io/egyhaty/hermes-assistant-jobs@sha256:7ca0886c71e9614b8687ddf43c8c3e5dea9b21d6af4df9a7aefb195ad11ac87b",
   "upstream_revision": "e0b2401a7a7b333eab0b518e80be5285c3ee85c5",
-  "source_revision": "0cd50bcac663c4b7be82491f82f8120eed1252b1",
-  "build_and_scan": "https://github.com/egyhaty/hermes-assistant/actions/runs/40390490743",
+  "source_revision": "ef0d1f8d1650094e47d72c24faf1de44b58ec734",
+  "build_and_scan": "https://github.com/egyhaty/hermes-assistant/actions/runs/40401404051",
   "patchable_high_critical_findings": 0,
-  "runtime_acceptance": "Deployed and Ready. 40 offline tests and full patched-source compile passed. Native Flask status fixture preserved a session-limit reason and exit_code=0 after process cleanup. Live API exposes stop_reason/exit_code; actual start gate remains Profile changed and requires owner review at /jobs/. Default duration remains 900 seconds; no new applications started by repair. Informational sponsor/exit dialogs removed; Start confirmation preserved."
+  "runtime_acceptance": "Deployed and Ready with JOB_FINISH_SEARCH=1. Artificial elapsed/count caps disabled; profile approval valid. A real Kubernetes Job using the scheduler image, control Secret, and narrow network policy completed scheduler.py --check with {ready:true,started:false}. CronJob enabled at 0 */6 * * *, Africa/Cairo, concurrencyPolicy Forbid, no activeDeadlineSeconds. Kubernetes server dry-run accepted the complete Kustomize deployment. 45 offline tests passed. No application was submitted by the smoke test."
 }
