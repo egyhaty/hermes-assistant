@@ -51,7 +51,7 @@
             "containers": [
               {
                 "name": "jobs",
-                "image": "ghcr.io/egyhaty/hermes-assistant-jobs@sha256:8568f8e8a978af939a917f32136a84dfb390e678d151aea305f1598a6194acfb",
+                "image": "ghcr.io/egyhaty/hermes-assistant-jobs@sha256:5dffb39fe4517cf15d41d4c428bcdd383a78170f6a70aee96efe5759e8fe235c",
                 "envFrom": [
                   {
                     "secretRef": {

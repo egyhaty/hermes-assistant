@@ -1,8 +1,8 @@
 {
-  "image": "ghcr.io/egyhaty/hermes-assistant-jobs@sha256:8568f8e8a978af939a917f32136a84dfb390e678d151aea305f1598a6194acfb",
+  "image": "ghcr.io/egyhaty/hermes-assistant-jobs@sha256:5dffb39fe4517cf15d41d4c428bcdd383a78170f6a70aee96efe5759e8fe235c",
   "upstream_revision": "e0b2401a7a7b333eab0b518e80be5285c3ee85c5",
-  "source_revision": "69c088fbb871618cd907e4589206e4303ef77e66",
-  "build_and_scan": "https://github.com/egyhaty/hermes-assistant/actions/runs/40373545335",
+  "source_revision": "a207c5533420237e73021b696633d1a5abfcc0d1",
+  "build_and_scan": "https://github.com/egyhaty/hermes-assistant/actions/runs/40377874239",
   "patchable_high_critical_findings": 0,
-  "runtime_acceptance": "Deployed; isolated loopback tests verified expired-session Start=401, panel errors visible, original Start confirmation preserved, authenticated status/history JSON=200, and live startup gate passed. Read-only eager search found nine job links in 29.8 seconds. Fresh user-facing panel navigation redirected to login, confirming current session requires reauthentication. No applications submitted by these tests."
+  "runtime_acceptance": "Deployed and Ready. 37 offline tests passed; complete pinned upstream patch compiled; empty selection stays blank. Live synthetic native answer returned the verified fixture fact while ignoring employer prose; repeating it reused the cache (one API reservation). Attempt-count and submission-confirmation guards verified in deployed source. Actual application run remains stopped pending owner Start; existing six historical entries remain unverified by this repair."
 }
