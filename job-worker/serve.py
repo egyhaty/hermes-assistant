@@ -82,7 +82,7 @@ async def auth(request,handler):
   if request.method not in ('GET','HEAD') and request.headers.get('Origin')!=PUBLIC:raise web.HTTPForbidden(text='Origin check failed')
   if request.path=='/jobs/login':return await handler(request)
   if request.headers.get('Upgrade','').lower()=='websocket' and request.headers.get('Origin')!=PUBLIC:raise web.HTTPForbidden()
-  if not has_session(request) and not await asyncio.to_thread(check_password,request):
+  if not has_session(request):
    if request.method=='GET' and '/api/' not in request.path and request.headers.get('Upgrade','').lower()!='websocket':raise web.HTTPSeeOther('/jobs/login')
    raise web.HTTPUnauthorized()
  return await handler(request)
