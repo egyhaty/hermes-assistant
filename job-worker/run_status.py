@@ -17,6 +17,7 @@ def exited(code):
  if not data.get('stop_reason'):data['stop_reason']='Run finished' if code==0 else 'Process exited with code '+str(code)
  write(data)
 def limit_reached(confirmed,attempted,inspected,elapsed):
+ if os.environ.get("JOB_FINISH_SEARCH")=="1":return False
  try:seconds=max(900,min(3600,int(os.environ.get('JOB_RUN_SECONDS','900'))))
  except ValueError:seconds=900
  reason=('10 submission attempts reached' if attempted>=10 else '10 confirmed applications reached' if confirmed>=10 else '60 inspected jobs reached' if inspected>=60 else str(seconds//60)+' minute session limit reached' if elapsed>seconds else None)

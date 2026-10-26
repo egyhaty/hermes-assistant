@@ -16,3 +16,6 @@ class RunStatusTests(unittest.TestCase):
    self.assertFalse(self.m.limit_reached(0,0,0,1000));self.assertTrue(self.m.limit_reached(0,0,0,3601))
   self.assertEqual(self.m.read()['stop_reason'],'60 minute session limit reached')
   self.assertTrue(self.m.limit_reached(0,10,0,10));self.assertEqual(self.m.read()['stop_reason'],'10 submission attempts reached')
+
+ def test_finish_search_mode_has_no_artificial_limits(self):
+  with patch.dict(os.environ,{'JOB_FINISH_SEARCH':'1'}):self.assertFalse(self.m.limit_reached(500,500,5000,100000))

@@ -2,7 +2,7 @@
 import asyncio,base64,hashlib,hmac,json,os,signal,subprocess,sys,time,fcntl,secrets
 from pathlib import Path
 from aiohttp import web,ClientSession,WSMsgType
-from worker_guard import validate,profile_digest
+from worker_guard import validate,profile_digest,profile_ready_error,require_ready
 PROCS=[]
 DATA_LOCK=None
 PUBLIC='https://hermes.murabba.net'
@@ -13,7 +13,7 @@ HTML='''<!doctype html><meta charset="utf-8"><title>Job Applications</title>
 <li><a href="/jobs/panel/">اضبط بياناتك وإجابات التقديم والوظائف المطلوبة</a>. لا تكتب بيانات افتراضية؛ الأسئلة غير المعروفة يتم تخطيها.</li>
 <li>ارفع أحدث CV بصيغة PDF:<form method="post" action="/jobs/resume" enctype="multipart/form-data"><input type="file" name="resume" accept="application/pdf" required><button>رفع CV</button></form></li>
 <li>بعد اكتمال إعداد بياناتك:<form method="post" action="/jobs/ready"><button>حفظ اكتمال إعداد الملف</button></form></li>
-<li>ابدأ وأوقف التقديم من لوحة الوظائف. حد الجلسة 10 طلبات Easy Apply، والتقديم تلقائي بعد اكتمال الملف.</li></ol>
+<li>ابدأ وأوقف التقديم من لوحة الوظائف. دورة البحث والتقديم تكمل النتائج المتاحة بدون حد وقت أو عدد؛ التقديم تلقائي بعد اكتمال الملف.</li></ol>
 <p>أي CAPTCHA أو تحقق أمني تكمله بنفسك. لا توجد رسائل Recruiters أو طلبات Connections آلية.</p></body>'''
 def launch(args):
  p=subprocess.Popen(args,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL);PROCS.append(p);return p
@@ -75,7 +75,7 @@ async def auth(request,handler):
   except Exception:ok=False
   return web.json_response({'browser_ready':ok},status=200 if ok else 503)
  token=request.headers.get('Authorization','')
- if request.path in ('/control/status','/control/start','/control/stop'):
+ if request.path in ('/control/status','/control/start','/control/stop','/control/scheduled-start','/control/schedule-check'):
   if not hmac.compare_digest(token,'Bearer '+os.environ['CONTROL_TOKEN']):raise web.HTTPUnauthorized()
  else:
   if not request.path.startswith('/jobs/'):raise web.HTTPNotFound()
@@ -86,9 +86,25 @@ async def auth(request,handler):
    if request.path=='/jobs/panel/api/run':print('Jobs Start rejected: missing or expired web session',flush=True)
    if request.method=='GET' and '/api/' not in request.path and request.headers.get('Upgrade','').lower()!='websocket':raise web.HTTPSeeOther('/jobs/login')
    raise web.HTTPUnauthorized()
+ if request.method=='POST' and request.path in ('/control/start','/control/scheduled-start','/control/schedule-check','/jobs/panel/api/run'):
+  async with request.app['start_lock']:return await handler(request)
  return await handler(request)
 
 async def handle(request):
+ if request.path in ('/control/scheduled-start','/control/schedule-check'):
+  if request.method!='POST':raise web.HTTPMethodNotAllowed(request.method,['POST'])
+  async with request.app['client'].get('http://127.0.0.1:5000/api/status',timeout=10) as r:status=await r.json()
+  if status.get('running'):return web.json_response({**status,'skipped':True,'reason':'A run is already active; browser left untouched.'})
+  error=profile_ready_error()
+  if error:return web.json_response({'error':error},status=409)
+  from scheduled_start import prepare_feed
+  try:await asyncio.to_thread(prepare_feed)
+  except Exception:return web.json_response({'error':'Could not prepare LinkedIn Feed; no run started.'},status=503)
+  error=require_ready()
+  if error:return web.json_response({'error':error},status=409)
+  if request.path.endswith('schedule-check'):return web.json_response({'ready':True,'started':False})
+  async with request.app['client'].post('http://127.0.0.1:5000/api/run',timeout=15) as r:
+   return web.json_response(await r.json(),status=r.status)
  if request.path=='/jobs/login':
   if request.method=='GET':
    if has_session(request):raise web.HTTPSeeOther('/jobs/')
@@ -154,7 +170,7 @@ async def handle(request):
   body=await response.read();out={k:v for k,v in response.headers.items() if k.lower() not in ('content-length','transfer-encoding','connection','content-encoding','access-control-allow-origin')}
   if 'Location' in out and out['Location'].startswith('/'):out['Location']='/jobs/panel'+out['Location']
   return web.Response(body=body,status=response.status,headers=out)
-async def start(app):app['client']=ClientSession()
+async def start(app):app['client']=ClientSession();app['start_lock']=asyncio.Lock()
 async def cleanup(app):
  await app['client'].close()
  for proc in reversed(PROCS):

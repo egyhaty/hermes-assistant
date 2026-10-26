@@ -111,3 +111,12 @@ p=root/'runAiBot.py';s=p.read_text();s=s.replace('from run_status import limit_r
 s=s.replace('        critical_error_log("In Applier Main", e)', '        record_run_failure("Application error: "+type(e).__name__)\n        critical_error_log("In Applier Main", e)')
 s=s.replace('        logger.error("The browser window was closed or the session became invalid. Exiting.", exc_info=e)', '        record_run_failure("Browser window closed or session invalid")\n        logger.error("The browser window was closed or the session became invalid. Exiting.", exc_info=e)')
 p.write_text(s)
+
+# Owner requested four unattended finish-search cycles daily. Still one cycle:
+# no run_non_stop loop, no provider/platform quota bypass, no repeated page loops.
+p=root/'runAiBot.py';s=p.read_text()
+s=s.replace('if _WORKER_SUBMIT_ATTEMPTS[0]>=10:', 'if os.environ.get("JOB_FINISH_SEARCH")!="1" and _WORKER_SUBMIT_ATTEMPTS[0]>=10:')
+s=s.replace('linkedIn_tab = False', 'if os.environ.get("JOB_FINISH_SEARCH")=="1":\n    switch_number=float("inf")\n    run_non_stop=False\nlinkedIn_tab = False')
+s=s.replace('        current_count = 0', '        current_count = 0\n        _visited_pages=set()')
+s=s.replace('                pagination_element, current_page = get_page_info()', '                pagination_element, current_page = get_page_info()\n                _page_key=(current_page,tuple(el.get_attribute("data-occludable-job-id") for el in driver.find_elements(By.XPATH,"//li[@data-occludable-job-id]")))\n                if _page_key in _visited_pages:\n                    print("Search term finished: page did not advance.",flush=True)\n                    break\n                _visited_pages.add(_page_key)')
+p.write_text(s)

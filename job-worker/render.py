@@ -8,7 +8,7 @@ def render(image):
  pod={'hostname':'hermes-jobs','nodeSelector':{'kubernetes.io/hostname':'devops'},'automountServiceAccountToken':False,'terminationGracePeriodSeconds':30,
  'imagePullSecrets':[{'name':'hermes-registry'}],
  'securityContext':{'runAsNonRoot':True,'runAsUser':10000,'runAsGroup':10000,'fsGroup':10000,'fsGroupChangePolicy':'OnRootMismatch','seccompProfile':{'type':'Localhost','localhostProfile':'hermes-jobs-browser.json'}},
- 'containers':[{'name':'jobs','image':image,'env':[{'name':'JOB_RUN_SECONDS','value':'900'}],'envFrom':[{'secretRef':{'name':'hermes-jobs-auth'}},{'secretRef':{'name':'hermes-free-api'}},{'secretRef':{'name':'hermes-jobs-groq','optional':True}}],
+ 'containers':[{'name':'jobs','image':image,'env':[{'name':'JOB_RUN_SECONDS','value':'0'},{'name':'JOB_FINISH_SEARCH','value':'1'}],'envFrom':[{'secretRef':{'name':'hermes-jobs-auth'}},{'secretRef':{'name':'hermes-free-api'}},{'secretRef':{'name':'hermes-jobs-groq','optional':True}}],
  'securityContext':{'readOnlyRootFilesystem':True,'allowPrivilegeEscalation':False,'capabilities':{'drop':['ALL']},'appArmorProfile':{'type':'Localhost','localhostProfile':'hermes-jobs-browser'}},
  'ports':[{'name':'http','containerPort':9118}],
  'resources':{'requests':{'cpu':'250m','memory':'512Mi'},'limits':{'cpu':'1','memory':'2Gi'}},
@@ -19,10 +19,26 @@ def render(image):
  {'apiVersion':'apps/v1','kind':'Deployment','metadata':meta(name),'spec':{'replicas':0,'strategy':{'type':'Recreate'},'selector':{'matchLabels':labels},'template':{'metadata':{'labels':labels},'spec':pod}}},
  {'apiVersion':'v1','kind':'Service','metadata':meta(name),'spec':{'selector':labels,'ports':[{'name':'http','port':80,'targetPort':9118}]}},
  {'apiVersion':'networking.k8s.io/v1','kind':'NetworkPolicy','metadata':meta(name),'spec':{'podSelector':{'matchLabels':labels},'policyTypes':['Ingress','Egress'],
- 'ingress':[{'from':[{'namespaceSelector':{'matchLabels':{'kubernetes.io/metadata.name':'traefik'}},'podSelector':{'matchLabels':{'app.kubernetes.io/name':'traefik'}}},{'podSelector':{'matchLabels':{'app.kubernetes.io/name':'hermes-karem'}}}],'ports':[{'protocol':'TCP','port':9118}]}],
+ 'ingress':[{'from':[{'namespaceSelector':{'matchLabels':{'kubernetes.io/metadata.name':'traefik'}},'podSelector':{'matchLabels':{'app.kubernetes.io/name':'traefik'}}},{'podSelector':{'matchLabels':{'app.kubernetes.io/name':'hermes-karem'}}},{'podSelector':{'matchLabels':{'app.kubernetes.io/name':'hermes-jobs-scheduler'}}}],'ports':[{'protocol':'TCP','port':9118}]}],
  'egress':[{'to':[{'namespaceSelector':{'matchLabels':{'kubernetes.io/metadata.name':'kube-system'}},'podSelector':{'matchLabels':{'k8s-app':'kube-dns'}}}],'ports':[{'protocol':'UDP','port':53},{'protocol':'TCP','port':53}]},{'to':[{'ipBlock':{'cidr':'0.0.0.0/0','except':['10.0.0.0/8','172.16.0.0/12','192.168.0.0/16','169.254.0.0/16','127.0.0.0/8','66.11.126.176/28','224.0.0.0/4']}}],'ports':[{'protocol':'TCP','port':443}]}]}},
  {'apiVersion':'networking.k8s.io/v1','kind':'Ingress','metadata':{**meta(name),'annotations':{'traefik.ingress.kubernetes.io/router.entrypoints':'websecure','traefik.ingress.kubernetes.io/router.middlewares':'hermes-hermes-jobs-security@kubernetescrd,hermes-hermes-dashboard-rate-limit@kubernetescrd'}},'spec':{'ingressClassName':'traefik','tls':[{'hosts':['hermes.murabba.net'],'secretName':'hermes-dashboard-tls'}],'rules':[{'host':'hermes.murabba.net','http':{'paths':[{'path':'/jobs/','pathType':'Prefix','backend':{'service':{'name':name,'port':{'name':'http'}}}}]}}]}}]
  objects.append({'apiVersion':'traefik.io/v1alpha1','kind':'Middleware','metadata':meta('hermes-jobs-security'),'spec':{'headers':{'contentTypeNosniff':True,'referrerPolicy':'same-origin','stsSeconds':15552000}}})
+ scheduler_labels={'app.kubernetes.io/name':'hermes-jobs-scheduler'}
+ objects.append({'apiVersion':'batch/v1','kind':'CronJob','metadata':meta('hermes-jobs-schedule'),'spec':{
+  'schedule':'0 */6 * * *','timeZone':'Africa/Cairo','concurrencyPolicy':'Forbid','startingDeadlineSeconds':300,
+  'successfulJobsHistoryLimit':3,'failedJobsHistoryLimit':3,'suspend':True,
+  'jobTemplate':{'spec':{'backoffLimit':0,'ttlSecondsAfterFinished':86400,'template':{'metadata':{'labels':scheduler_labels},'spec':{
+   'restartPolicy':'Never','automountServiceAccountToken':False,'imagePullSecrets':[{'name':'hermes-registry'}],
+   'securityContext':{'runAsNonRoot':True,'runAsUser':10000,'runAsGroup':10000,'seccompProfile':{'type':'RuntimeDefault'}},
+   'containers':[{'name':'scheduler','image':image,'command':['python','/opt/worker/scheduler.py'],
+    'env':[{'name':'CONTROL_TOKEN','valueFrom':{'secretKeyRef':{'name':'hermes-jobs-control','key':'CONTROL_TOKEN'}}}],
+    'securityContext':{'readOnlyRootFilesystem':True,'allowPrivilegeEscalation':False,'capabilities':{'drop':['ALL']}},
+    'resources':{'requests':{'cpu':'10m','memory':'32Mi'},'limits':{'cpu':'100m','memory':'128Mi'}}}]}}}}}})
+ objects.append({'apiVersion':'networking.k8s.io/v1','kind':'NetworkPolicy','metadata':meta('hermes-jobs-scheduler'),'spec':{
+  'podSelector':{'matchLabels':scheduler_labels},'policyTypes':['Ingress','Egress'],'ingress':[],
+  'egress':[{'to':[{'podSelector':{'matchLabels':labels}}],'ports':[{'protocol':'TCP','port':9118}]},
+   {'to':[{'namespaceSelector':{'matchLabels':{'kubernetes.io/metadata.name':'kube-system'}},'podSelector':{'matchLabels':{'k8s-app':'kube-dns'}}}],
+    'ports':[{'protocol':'UDP','port':53},{'protocol':'TCP','port':53}]}]}})
  return {'apiVersion':'v1','kind':'List','items':[x for x in objects if x['kind']!='PersistentVolumeClaim']}
 if __name__=='__main__':
  p=argparse.ArgumentParser(description=__doc__);p.add_argument('--image',required=True);p.add_argument('--out',required=True,type=Path);a=p.parse_args();a.out.parent.mkdir(exist_ok=True,parents=True);a.out.write_text(json.dumps(render(a.image),indent=2)+'\n')
