@@ -44,6 +44,9 @@ def render(settings, root=ROOT):
         'agent': {'max_turns': 5 if settings['provider'] == 'openrouter' else 30, 'gateway_timeout': 900},
         'max_concurrent_sessions': 2,
         'group_sessions_per_user': True,
+        'web': {'backend': 'firecrawl', 'search_backend': 'firecrawl', 'extract_backend': 'firecrawl'},
+        'kanban': {'dispatch_in_gateway': False, 'review_dispatch': False,
+                   'notify_in_gateway': False, 'auto_subscribe_on_create': False},
         'terminal': {'backend': 'local', 'cwd': '/opt/data/workspace', 'timeout': 120, 'home_mode': 'profile'},
         'memory': {'memory_enabled': True, 'user_profile_enabled': True,
                    'memory_char_limit': 2200, 'user_char_limit': 1800, 'nudge_interval': 10},
@@ -81,6 +84,7 @@ def render(settings, root=ROOT):
             'initialDelaySeconds': 10, 'periodSeconds': 15, 'timeoutSeconds': 5},
     }
     if settings['provider'] == 'openrouter':
+        config['model'].update(base_url='https://openrouter.ai/api/v1', api_mode='chat_completions')
         config['auxiliary'] = {'free_only': True}
         container['envFrom'].append({'secretRef': {'name': 'hermes-free-api'}})
     init_code = """from pathlib import Path
