@@ -1,0 +1,12 @@
+{
+  "date": "2026-10-26",
+  "source_pvc": "hermes-data",
+  "encrypted_backup_pvc": "hermes-backup",
+  "restore_pvc": "hermes-restore-check",
+  "encryption": "AES-256-GCM; separate Kubernetes Secret hermes-backup-key",
+  "encrypted_archive_bytes": 1600426,
+  "inventory_entries": 551,
+  "restored_sqlite_databases_ok": 5,
+  "complete_content_match": true,
+  "scope": "stopped Hermes data-home directory including OAuth and sessions; not loss-of-cluster recovery; key must be protected separately"
+}

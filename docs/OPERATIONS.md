@@ -12,7 +12,7 @@ Build on the cluster's build infrastructure or CI, not by installing an agent on
 docker build -f container/Dockerfile --build-arg HERMES_BASE_IMAGE=nousresearch/hermes-agent@sha256:ACTUAL_DIGEST --build-arg CODEX_VERSION=ACTUAL_FIXED_VERSION -t YOUR_REGISTRY/hermes-karem:REVIEWED_VERSION .
 ```
 
-This is a template, not an executable-ready build command. Push through existing CI/registry tooling and record the resulting custom image digest. Version pinning prevents accidental drift; it does not substitute for vulnerability review or the live sandbox test. No workflow in this kit builds/pushes automatically.
+This is a template, not an executable-ready build command. Push through existing CI/registry tooling and record the resulting custom image digest. Version pinning prevents accidental drift; it does not substitute for vulnerability review or the live sandbox test. The private repository image workflow builds/pushes to GHCR; only the explicitly reviewed digest is promoted.
 
 ## Configuration and credentials
 
@@ -56,7 +56,7 @@ Restore into a separate PVC with no running gateway, preserve UID/GID access, th
 - Verify target storage/CNI and a full backup/restore.
 - Run the model behavior cases in ACCEPTANCE.md.
 
-Only after these gates should the Deployment be scaled to one. Preparing all six workflows is not evidence that all external integrations are already connected.
+Current completed checks and remaining limitations are recorded in DEPLOYMENT-STATUS.md; that live record supersedes this original preparation checklist. Codex execution remains blocked and must not be enabled by relaxing the sandbox. Preparing all six workflows is not evidence that all external integrations are already connected.
 
 ## Private input flow
 

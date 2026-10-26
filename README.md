@@ -1,6 +1,6 @@
 # Karem's Hermes Assistant
 
-Six prepared workflows: job search, study and knowledge, personal planning, hosting tickets, infrastructure triage, and Codex coordination. This is a preparation kit, not a running or certified production service.
+Six prepared workflows: job search, study and knowledge, personal planning, hosting tickets, infrastructure triage, and Codex coordination. The private Telegram gateway is deployed on Kubernetes; the six workflow definitions still need their respective integrations and behavior acceptance.
 
 ## What is implemented
 
@@ -31,4 +31,4 @@ No network, model credentials or live cluster are needed for those checks. They 
 
 Copy `config/deployment.example.json` outside the repository and fill it with non-secret deployment choices. Run `python3 scripts/render.py --settings /absolute/path/settings.json --out build`. The renderer refuses unresolved values and non-digest image references. Inspect `build/manifest.json`; it is a Kubernetes List with replicas set to zero. The secret is created separately, never generated into this repository.
 
-Integration progress and live evidence are recorded in `docs/DEPLOYMENT-STATUS.md`. The gateway remains inactive pending credentials and live acceptance.
+Integration progress and live evidence are recorded in `docs/DEPLOYMENT-STATUS.md`. See that status for verified checks and remaining acceptance; deploy/kustomization.yaml activates one replica while the base renderer defaults to zero.

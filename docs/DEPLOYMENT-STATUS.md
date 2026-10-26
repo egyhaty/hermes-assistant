@@ -14,12 +14,12 @@ Source: independent private repository https://github.com/egyhaty/hermes-assista
 
 ## Desired deployment
 
-config/deployment.json and deploy/manifest.json use the final private GHCR image, openai-codex/gpt-6.1-sol, namespace hermes, Longhorn, the separate owner-profile Secret and optional namespace-only imagePullSecret hermes-registry. Deployment replicas remain zero pending credentials and runtime acceptance. No Service, Ingress, schedules, job applications, external messages or paid API calls enabled.
+config/deployment.json and deploy/manifest.json use the final private GHCR image, openai-codex/gpt-6.1-sol, namespace hermes, Longhorn, the separate owner-profile Secret and optional namespace-only imagePullSecret hermes-registry. Kustomize activates exactly one replica after the checks recorded below; the renderer retains its safe zero-replica default. No Service, Ingress, schedules, job applications, external messages or paid API calls enabled.
 
 ## Remaining gates
 
-- Telegram bot token and positive numeric owner allowlist must be entered locally using scripts/configure_telegram.py; never paste the token into chat.
-- Owner allowlist rejection, gateway persistence across restart and a full protected backup/restore remain unverified. Longhorn backup target is available, but CSI VolumeSnapshot APIs are absent.
+- Owner onboarding completed; no further token entry is needed.
+- Owner-originated Telegram message/response acceptance remains pending. Native adapter owner/non-owner admission and encrypted in-cluster restore are verified below. Off-cluster disaster recovery/key recovery remains unverified.
 - Codex `sandbox linux -- /bin/true` failed: bwrap cannot create a new namespace under the restricted pod. Execution remains blocked; no privilege expansion or sandbox bypass was used. A separately reviewed compatible worker is needed.
 
 ## Private image and volume ownership verification
@@ -37,3 +37,7 @@ python3 /Users/karem/hermes-assistant/scripts/configure_telegram.py
 ```
 
 The helper masks token input, verifies the bot, refuses an existing webhook, and prints a unique Start link. Open that link in the owner Telegram account and press Start. Only the matching private message identifies the numeric owner; forwarded, group, bot and unrelated messages cannot enroll. The helper creates hermes-credentials directly through stdin and leaves the Deployment at zero replicas. It sends no bot messages. Do not paste credentials into chat.
+
+## Telegram and restore acceptance — 26 October
+
+Owner onboarding completed: hermes-credentials contains the two required Telegram keys; getMe verified the token and getWebhookInfo found no webhook. Native TelegramAdapter intake accepted the configured owner and rejected a different synthetic user without any messages sent. Full stopped data-home was archived with AES-256-GCM on hermes-backup, restored onto hermes-restore-check and compared: 551 entries matched; five SQLite databases passed integrity_check. Receipt: docs/build-receipts/restore-result.json. This is an in-cluster restore test; no off-cluster disaster recovery or key recovery has been demonstrated. The effective runtime policy was verified as ignore after fresh ConfigMap loading and plugin discovery. The gateway was activated with a single replica. A SQLite marker survived transition to the real Deployment. A second rollout uses the image-provided /usr/bin/tini for signal forwarding and child reaping; process readiness alone does not prove a Telegram reply.

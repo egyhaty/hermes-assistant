@@ -30,6 +30,7 @@ def render(settings, root=ROOT):
     labels = {'app.kubernetes.io/name': 'hermes-karem'}
     metadata = lambda name: {'name': name, 'namespace': ns, 'labels': labels}
     config = {
+        '_config_version': 51,  # Verified against the selected Hermes v0.22.5 image.
         'model': {'provider': settings['provider'], 'default': settings['model']},
         'database': {'journal_mode': 'delete'},
         'agent': {'max_turns': 30, 'gateway_timeout': 900},
@@ -44,13 +45,16 @@ def render(settings, root=ROOT):
         'platform_toolsets': {surface: ['web', 'terminal', 'file', 'skills', 'todo',
             'memory', 'session_search', 'clarify'] for surface in ['cli', 'telegram']},
         'platforms': {'telegram': {'extra': {'drop_pending_on_cold_boot': True,
-                                             'disable_link_previews': True}}},
+                                             'disable_link_previews': True,
+                                             'unauthorized_dm_behavior': 'ignore'}}},
     }
     pvc_spec = {'accessModes': ['ReadWriteOnce'], 'resources': {'requests': {'storage': settings['storage_size']}}}
     if settings['storage_class']:
         pvc_spec['storageClassName'] = settings['storage_class']
     container = {
         'name': 'hermes', 'image': settings['image'], 'imagePullPolicy': 'IfNotPresent',
+        'command': ['/usr/bin/tini', '-g', '--', '/opt/hermes/.venv/bin/python',
+                    '/opt/karem/scripts/bootstrap.py', '--exec'],
         'envFrom': [{'secretRef': {'name': settings['secret_name']}}],
         'env': [{'name': 'HERMES_HOME', 'value': '/opt/data'}, {'name': 'HOME', 'value': '/opt/data'},
                 {'name': 'HERMES_TIMEZONE', 'value': settings['timezone']},
@@ -65,7 +69,7 @@ def render(settings, root=ROOT):
                          {'name': 'private', 'mountPath': '/etc/karem-private', 'readOnly': True}],
         # Process-only readiness: not a claim that Telegram/provider connectivity is healthy.
         'readinessProbe': {'exec': {'command': ['/opt/hermes/.venv/bin/python', '-c',
-            "from pathlib import Path; import sys; sys.exit(0 if b'gateway' in Path('/proc/1/cmdline').read_bytes() else 1)"]},
+            "from pathlib import Path; import sys; cmds=[p.read_bytes().split(bytes([0])) for p in Path('/proc').glob('[0-9]*/cmdline') if p.exists()]; sys.exit(0 if any(b'gateway' in c and b'run' in c for c in cmds) else 1)"]},
             'initialDelaySeconds': 10, 'periodSeconds': 15, 'timeoutSeconds': 5},
     }
     init_code = """from pathlib import Path
