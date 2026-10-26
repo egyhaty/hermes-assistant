@@ -1,0 +1,341 @@
+{
+  "apiVersion": "v1",
+  "kind": "List",
+  "items": [
+    {
+      "apiVersion": "apps/v1",
+      "kind": "Deployment",
+      "metadata": {
+        "name": "hermes-jobs",
+        "namespace": "hermes"
+      },
+      "spec": {
+        "replicas": 0,
+        "strategy": {
+          "type": "Recreate"
+        },
+        "selector": {
+          "matchLabels": {
+            "app.kubernetes.io/name": "hermes-jobs"
+          }
+        },
+        "template": {
+          "metadata": {
+            "labels": {
+              "app.kubernetes.io/name": "hermes-jobs"
+            }
+          },
+          "spec": {
+            "hostname": "hermes-jobs",
+            "nodeSelector": {
+              "kubernetes.io/hostname": "devops"
+            },
+            "automountServiceAccountToken": false,
+            "terminationGracePeriodSeconds": 30,
+            "imagePullSecrets": [
+              {
+                "name": "hermes-registry"
+              }
+            ],
+            "securityContext": {
+              "runAsNonRoot": true,
+              "runAsUser": 10000,
+              "runAsGroup": 10000,
+              "fsGroup": 10000,
+              "fsGroupChangePolicy": "OnRootMismatch",
+              "seccompProfile": {
+                "type": "Localhost",
+                "localhostProfile": "hermes-jobs-browser.json"
+              }
+            },
+            "containers": [
+              {
+                "name": "jobs",
+                "image": "ghcr.io/egyhaty/hermes-assistant-jobs@sha256:db22f0b35714e76388d2092ee0229875b5cd3e5453b1ac36789d08e881355aea",
+                "envFrom": [
+                  {
+                    "secretRef": {
+                      "name": "hermes-jobs-auth"
+                    }
+                  },
+                  {
+                    "secretRef": {
+                      "name": "hermes-free-api"
+                    }
+                  }
+                ],
+                "securityContext": {
+                  "readOnlyRootFilesystem": true,
+                  "allowPrivilegeEscalation": false,
+                  "capabilities": {
+                    "drop": [
+                      "ALL"
+                    ]
+                  },
+                  "appArmorProfile": {
+                    "type": "Localhost",
+                    "localhostProfile": "hermes-jobs-browser"
+                  }
+                },
+                "ports": [
+                  {
+                    "name": "http",
+                    "containerPort": 9118
+                  }
+                ],
+                "resources": {
+                  "requests": {
+                    "cpu": "250m",
+                    "memory": "512Mi"
+                  },
+                  "limits": {
+                    "cpu": "1",
+                    "memory": "2Gi"
+                  }
+                },
+                "readinessProbe": {
+                  "httpGet": {
+                    "path": "/health",
+                    "port": 9118
+                  },
+                  "initialDelaySeconds": 15,
+                  "periodSeconds": 10
+                },
+                "volumeMounts": [
+                  {
+                    "name": "data",
+                    "mountPath": "/data",
+                    "subPath": "hermes-home/job-worker-data"
+                  },
+                  {
+                    "name": "tmp",
+                    "mountPath": "/tmp"
+                  },
+                  {
+                    "name": "shm",
+                    "mountPath": "/dev/shm"
+                  },
+                  {
+                    "name": "profile",
+                    "mountPath": "/etc/job-profile",
+                    "readOnly": true
+                  }
+                ]
+              }
+            ],
+            "volumes": [
+              {
+                "name": "profile",
+                "secret": {
+                  "secretName": "hermes-jobs-profile",
+                  "optional": true,
+                  "defaultMode": 288
+                }
+              },
+              {
+                "name": "data",
+                "persistentVolumeClaim": {
+                  "claimName": "hermes-data"
+                }
+              },
+              {
+                "name": "tmp",
+                "emptyDir": {
+                  "sizeLimit": "512Mi"
+                }
+              },
+              {
+                "name": "shm",
+                "emptyDir": {
+                  "medium": "Memory",
+                  "sizeLimit": "256Mi"
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Service",
+      "metadata": {
+        "name": "hermes-jobs",
+        "namespace": "hermes"
+      },
+      "spec": {
+        "selector": {
+          "app.kubernetes.io/name": "hermes-jobs"
+        },
+        "ports": [
+          {
+            "name": "http",
+            "port": 80,
+            "targetPort": 9118
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "networking.k8s.io/v1",
+      "kind": "NetworkPolicy",
+      "metadata": {
+        "name": "hermes-jobs",
+        "namespace": "hermes"
+      },
+      "spec": {
+        "podSelector": {
+          "matchLabels": {
+            "app.kubernetes.io/name": "hermes-jobs"
+          }
+        },
+        "policyTypes": [
+          "Ingress",
+          "Egress"
+        ],
+        "ingress": [
+          {
+            "from": [
+              {
+                "namespaceSelector": {
+                  "matchLabels": {
+                    "kubernetes.io/metadata.name": "traefik"
+                  }
+                },
+                "podSelector": {
+                  "matchLabels": {
+                    "app.kubernetes.io/name": "traefik"
+                  }
+                }
+              },
+              {
+                "podSelector": {
+                  "matchLabels": {
+                    "app.kubernetes.io/name": "hermes-karem"
+                  }
+                }
+              }
+            ],
+            "ports": [
+              {
+                "protocol": "TCP",
+                "port": 9118
+              }
+            ]
+          }
+        ],
+        "egress": [
+          {
+            "to": [
+              {
+                "namespaceSelector": {
+                  "matchLabels": {
+                    "kubernetes.io/metadata.name": "kube-system"
+                  }
+                },
+                "podSelector": {
+                  "matchLabels": {
+                    "k8s-app": "kube-dns"
+                  }
+                }
+              }
+            ],
+            "ports": [
+              {
+                "protocol": "UDP",
+                "port": 53
+              },
+              {
+                "protocol": "TCP",
+                "port": 53
+              }
+            ]
+          },
+          {
+            "to": [
+              {
+                "ipBlock": {
+                  "cidr": "0.0.0.0/0",
+                  "except": [
+                    "10.0.0.0/8",
+                    "172.16.0.0/12",
+                    "192.168.0.0/16",
+                    "169.254.0.0/16",
+                    "127.0.0.0/8",
+                    "66.11.126.176/28",
+                    "224.0.0.0/4"
+                  ]
+                }
+              }
+            ],
+            "ports": [
+              {
+                "protocol": "TCP",
+                "port": 443
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "networking.k8s.io/v1",
+      "kind": "Ingress",
+      "metadata": {
+        "name": "hermes-jobs",
+        "namespace": "hermes",
+        "annotations": {
+          "traefik.ingress.kubernetes.io/router.entrypoints": "websecure",
+          "traefik.ingress.kubernetes.io/router.middlewares": "hermes-hermes-jobs-security@kubernetescrd,hermes-hermes-dashboard-rate-limit@kubernetescrd"
+        }
+      },
+      "spec": {
+        "ingressClassName": "traefik",
+        "tls": [
+          {
+            "hosts": [
+              "hermes.murabba.net"
+            ],
+            "secretName": "hermes-dashboard-tls"
+          }
+        ],
+        "rules": [
+          {
+            "host": "hermes.murabba.net",
+            "http": {
+              "paths": [
+                {
+                  "path": "/jobs/",
+                  "pathType": "Prefix",
+                  "backend": {
+                    "service": {
+                      "name": "hermes-jobs",
+                      "port": {
+                        "name": "http"
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "traefik.io/v1alpha1",
+      "kind": "Middleware",
+      "metadata": {
+        "name": "hermes-jobs-security",
+        "namespace": "hermes"
+      },
+      "spec": {
+        "headers": {
+          "contentTypeNosniff": true,
+          "referrerPolicy": "same-origin",
+          "stsSeconds": 15552000
+        }
+      }
+    }
+  ]
+}

@@ -99,7 +99,7 @@
                 "command": [
                   "/opt/hermes/.venv/bin/python",
                   "-c",
-                  "from pathlib import Path\nimport os\nroot = Path('/mnt/pvc')\nhome = root / 'hermes-home'\nif home.is_symlink():\n    raise SystemExit('refusing a symlink data directory')\nlegacy = [p.name for p in root.iterdir() if p.name not in ('lost+found', 'hermes-home')]\nif legacy:\n    raise SystemExit('Legacy PVC-root data must be migrated offline before startup')\nos.umask(0o077)\nhome.mkdir(mode=0o700, exist_ok=True)\nif home.stat().st_uid != os.getuid():\n    raise SystemExit('Hermes data directory must be owned by the runtime UID')\n"
+                  "from pathlib import Path\nimport os\nroot = Path('/mnt/pvc')\nhome = root / 'hermes-home'\nif home.is_symlink():\n    raise SystemExit('refusing a symlink data directory')\nlegacy = [p.name for p in root.iterdir() if p.name not in ('lost+found', 'hermes-home')]\nif legacy:\n    raise SystemExit('Legacy PVC-root data must be migrated offline before startup')\nos.umask(0o077)\nhome.mkdir(mode=0o700, exist_ok=True)\njobs = home / 'job-worker-data'\nif jobs.is_symlink():\n    raise SystemExit('refusing a symlink job data directory')\njobs.mkdir(mode=0o700, exist_ok=True)\nif home.stat().st_uid != os.getuid():\n    raise SystemExit('Hermes data directory must be owned by the runtime UID')\n"
                 ],
                 "securityContext": {
                   "allowPrivilegeEscalation": false,
@@ -173,6 +173,10 @@
                     "value": "/etc/hermes-ssh/config"
                   },
                   {
+                    "name": "HERMES_JOBS_URL",
+                    "value": "http://hermes-jobs.hermes.svc.cluster.local"
+                  },
+                  {
                     "name": "TZ",
                     "value": "Africa/Cairo"
                   },
@@ -228,6 +232,11 @@
                   {
                     "name": "ssh",
                     "mountPath": "/etc/hermes-ssh",
+                    "readOnly": true
+                  },
+                  {
+                    "name": "jobs-control",
+                    "mountPath": "/etc/hermes-jobs",
                     "readOnly": true
                   }
                 ],
@@ -361,6 +370,14 @@
                 "name": "ssh",
                 "secret": {
                   "secretName": "hermes-ssh",
+                  "optional": true,
+                  "defaultMode": 288
+                }
+              },
+              {
+                "name": "jobs-control",
+                "secret": {
+                  "secretName": "hermes-jobs-control",
                   "optional": true,
                   "defaultMode": 288
                 }

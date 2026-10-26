@@ -1,7 +1,10 @@
 resources:
   - manifest.json
   - public-dashboard.json
+  - jobs.json
 # Activated after encrypted restore and owner-policy acceptance on 2026-10-26.
 replicas:
   - name: hermes
+    count: 1
+  - name: hermes-jobs
     count: 1

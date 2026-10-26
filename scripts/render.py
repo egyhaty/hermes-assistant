@@ -71,6 +71,7 @@ def render(settings, root=ROOT):
                 {'name': 'HERMES_TIMEZONE', 'value': settings['timezone']},
                 {'name': 'HERMES_LANGFUSE_CAPTURE', 'value': 'metadata'},
                 {'name': 'HERMES_SSH_CONFIG', 'value': '/etc/hermes-ssh/config'},
+                {'name': 'HERMES_JOBS_URL', 'value': 'http://hermes-jobs.hermes.svc.cluster.local'},
                 {'name': 'TZ', 'value': settings['timezone']},
                 {'name': 'HIMALAYA_CONFIG', 'value': '/opt/data/workspace/himalaya-config/config.toml'}],
         'resources': {'requests': {'cpu': '250m', 'memory': '1Gi'},
@@ -82,7 +83,8 @@ def render(settings, root=ROOT):
                          {'name': 'tmp', 'mountPath': '/tmp'},
                          {'name': 'private', 'mountPath': '/etc/karem-private', 'readOnly': True},
                          {'name': 'mail', 'mountPath': '/etc/hermes-mail', 'readOnly': True},
-                         {'name': 'ssh', 'mountPath': '/etc/hermes-ssh', 'readOnly': True}],
+                         {'name': 'ssh', 'mountPath': '/etc/hermes-ssh', 'readOnly': True},
+                         {'name': 'jobs-control', 'mountPath': '/etc/hermes-jobs', 'readOnly': True}],
         # Process-only readiness: not a claim that Telegram/provider connectivity is healthy.
         'readinessProbe': {'exec': {'command': ['/opt/hermes/.venv/bin/python', '-c',
             "from pathlib import Path; import sys; sys.exit(0 if b'gateway' in Path('/proc/1/cmdline').read_bytes() else 1)"]},
@@ -103,6 +105,10 @@ if legacy:
     raise SystemExit('Legacy PVC-root data must be migrated offline before startup')
 os.umask(0o077)
 home.mkdir(mode=0o700, exist_ok=True)
+jobs = home / 'job-worker-data'
+if jobs.is_symlink():
+    raise SystemExit('refusing a symlink job data directory')
+jobs.mkdir(mode=0o700, exist_ok=True)
 if home.stat().st_uid != os.getuid():
     raise SystemExit('Hermes data directory must be owned by the runtime UID')
 """
@@ -126,7 +132,8 @@ if home.stat().st_uid != os.getuid():
                                 {'name': 'tmp', 'emptyDir': {'sizeLimit': '1Gi'}},
                                 {'name': 'private', 'secret': {'secretName': 'hermes-profile', 'defaultMode': 288}},
                                 {'name': 'mail', 'secret': {'secretName': 'hermes-gmail', 'optional': True, 'defaultMode': 288}},
-                                {'name': 'ssh', 'secret': {'secretName': 'hermes-ssh', 'optional': True, 'defaultMode': 288}}]}}}}
+                                {'name': 'ssh', 'secret': {'secretName': 'hermes-ssh', 'optional': True, 'defaultMode': 288}},
+                                {'name': 'jobs-control', 'secret': {'secretName': 'hermes-jobs-control', 'optional': True, 'defaultMode': 288}}]}}}}
     if settings.get('dashboard') == 'enabled':
         # Admin UI explicitly manages the same profile; no Telegram/API/profile Secret is injected.
         dashboard = {
