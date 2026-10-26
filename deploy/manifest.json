@@ -169,6 +169,10 @@
                     "value": "metadata"
                   },
                   {
+                    "name": "HERMES_SSH_CONFIG",
+                    "value": "/etc/hermes-ssh/config"
+                  },
+                  {
                     "name": "TZ",
                     "value": "Africa/Cairo"
                   },
@@ -219,6 +223,11 @@
                   {
                     "name": "mail",
                     "mountPath": "/etc/hermes-mail",
+                    "readOnly": true
+                  },
+                  {
+                    "name": "ssh",
+                    "mountPath": "/etc/hermes-ssh",
                     "readOnly": true
                   }
                 ],
@@ -344,6 +353,14 @@
                 "name": "mail",
                 "secret": {
                   "secretName": "hermes-gmail",
+                  "optional": true,
+                  "defaultMode": 288
+                }
+              },
+              {
+                "name": "ssh",
+                "secret": {
+                  "secretName": "hermes-ssh",
                   "optional": true,
                   "defaultMode": 288
                 }
