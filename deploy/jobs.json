@@ -51,7 +51,7 @@
             "containers": [
               {
                 "name": "jobs",
-                "image": "ghcr.io/egyhaty/hermes-assistant-jobs@sha256:7ca0886c71e9614b8687ddf43c8c3e5dea9b21d6af4df9a7aefb195ad11ac87b",
+                "image": "ghcr.io/egyhaty/hermes-assistant-jobs@sha256:01c344925a7cca54996035351d5b870e4e0c2d6c9c60cd4a9bbea22156b270f9",
                 "env": [
                   {
                     "name": "JOB_RUN_SECONDS",
@@ -109,13 +109,31 @@
                     "memory": "2Gi"
                   }
                 },
+                "startupProbe": {
+                  "httpGet": {
+                    "path": "/health",
+                    "port": 9118
+                  },
+                  "periodSeconds": 5,
+                  "timeoutSeconds": 5,
+                  "failureThreshold": 24
+                },
                 "readinessProbe": {
                   "httpGet": {
                     "path": "/health",
                     "port": 9118
                   },
-                  "initialDelaySeconds": 15,
-                  "periodSeconds": 10
+                  "periodSeconds": 10,
+                  "timeoutSeconds": 5
+                },
+                "livenessProbe": {
+                  "httpGet": {
+                    "path": "/health",
+                    "port": 9118
+                  },
+                  "periodSeconds": 10,
+                  "timeoutSeconds": 5,
+                  "failureThreshold": 6
                 },
                 "volumeMounts": [
                   {
@@ -404,7 +422,7 @@
                 "containers": [
                   {
                     "name": "scheduler",
-                    "image": "ghcr.io/egyhaty/hermes-assistant-jobs@sha256:7ca0886c71e9614b8687ddf43c8c3e5dea9b21d6af4df9a7aefb195ad11ac87b",
+                    "image": "ghcr.io/egyhaty/hermes-assistant-jobs@sha256:01c344925a7cca54996035351d5b870e4e0c2d6c9c60cd4a9bbea22156b270f9",
                     "command": [
                       "python",
                       "/opt/worker/scheduler.py"
