@@ -1,0 +1,31 @@
+{
+  "image": "ghcr.io/egyhaty/hermes-assistant-jobs@sha256:01c344925a7cca54996035351d5b870e4e0c2d6c9c60cd4a9bbea22156b270f9",
+  "source_commit": "3517c517a7411a36296d0e6bb7ca6bc755255dcf",
+  "deployment_commit": "21a9fe24e1109d281926df8de5754d314ce54d6e",
+  "build_run": "https://github.com/egyhaty/hermes-assistant/actions/runs/40544908668",
+  "unit_tests_passed": 28,
+  "fixable_high_or_critical_vulnerabilities": 0,
+  "child_crash_test": {
+    "same_pod_uid": "67231e48-dae8-4593-84a9-8f8f8f1ba50a",
+    "automatic_liveness_restart": true,
+    "stale_x11_files_removed": true,
+    "recovered": true
+  },
+  "abrupt_exit_test": {
+    "pod_uid": "1087d891-05db-416e-8ebf-f73db5dc615f",
+    "restart_count": 1,
+    "last_exit_code": 137,
+    "ready": true
+  },
+  "persistent_test_data_preserved": true,
+  "production_browser_ready": true,
+  "schedule_check": {
+    "ready": true,
+    "started": false
+  },
+  "archived_failed_jobs": [
+    "hermes-jobs-schedule-29884500",
+    "hermes-jobs-schedule-29884860",
+    "hermes-jobs-schedule-29885220"
+  ]
+}
