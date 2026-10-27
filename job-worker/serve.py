@@ -3,6 +3,7 @@ import asyncio,base64,hashlib,hmac,json,os,signal,subprocess,sys,time,fcntl,secr
 from pathlib import Path
 from aiohttp import web,ClientSession,WSMsgType
 from worker_guard import validate,profile_digest,profile_ready_error,require_ready
+from process_health import clean_stale_display,wait_for_display,failed_children
 PROCS=[]
 DATA_LOCK=None
 PUBLIC='https://hermes.murabba.net'
@@ -16,12 +17,14 @@ HTML='''<!doctype html><meta charset="utf-8"><title>Job Applications</title>
 <li>ابدأ وأوقف التقديم من لوحة الوظائف. دورة البحث والتقديم تكمل النتائج المتاحة بدون حد وقت أو عدد؛ التقديم تلقائي بعد اكتمال الملف.</li></ol>
 <p>أي CAPTCHA أو تحقق أمني تكمله بنفسك. لا توجد رسائل Recruiters أو طلبات Connections آلية.</p></body>'''
 def launch(args):
- p=subprocess.Popen(args,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL);PROCS.append(p);return p
+ # Inherit container logs; do not hide startup failures or dead child processes.
+ p=subprocess.Popen(args);PROCS.append(p);return p
 
 def seed():
  global DATA_LOCK
  DATA_LOCK=open('/data/.worker-exclusive.lock','a')
  fcntl.flock(DATA_LOCK.fileno(),fcntl.LOCK_EX|fcntl.LOCK_NB)
+ clean_stale_display()
  # One worker owns the persistent profile; remove only stale singleton links.
  # No cookies, login data or session files are read or changed here.
  for name in ('SingletonLock','SingletonSocket','SingletonCookie'):
@@ -70,8 +73,11 @@ def has_session(request):
 @web.middleware
 async def auth(request,handler):
  if request.path=='/health':
+  failed=failed_children(PROCS)
+  if failed:return web.json_response({'browser_ready':False,'failed_children':failed},status=503)
   try:
    async with request.app['client'].get('http://127.0.0.1:9222/json/version',timeout=2) as response:ok=response.status==200
+   async with request.app['client'].get('http://127.0.0.1:5000/api/status',timeout=2) as response:ok=ok and response.status==200
   except Exception:ok=False
   return web.json_response({'browser_ready':ok},status=200 if ok else 503)
  token=request.headers.get('Authorization','')
@@ -87,6 +93,7 @@ async def auth(request,handler):
    if request.method=='GET' and '/api/' not in request.path and request.headers.get('Upgrade','').lower()!='websocket':raise web.HTTPSeeOther('/jobs/login')
    raise web.HTTPUnauthorized()
  if request.method=='POST' and request.path in ('/control/start','/control/scheduled-start','/control/schedule-check','/jobs/panel/api/run'):
+  if failed_children(PROCS):raise web.HTTPServiceUnavailable(text='Worker services unavailable; recovery pending')
   async with request.app['start_lock']:return await handler(request)
  return await handler(request)
 
@@ -170,8 +177,20 @@ async def handle(request):
   body=await response.read();out={k:v for k,v in response.headers.items() if k.lower() not in ('content-length','transfer-encoding','connection','content-encoding','access-control-allow-origin')}
   if 'Location' in out and out['Location'].startswith('/'):out['Location']='/jobs/panel'+out['Location']
   return web.Response(body=body,status=response.status,headers=out)
-async def start(app):app['client']=ClientSession();app['start_lock']=asyncio.Lock()
+async def watch_children():
+ while True:
+  failed=failed_children(PROCS)
+  if failed:
+   print('Critical worker child exited; health checks will trigger recovery: '+json.dumps(failed),flush=True)
+   return
+  await asyncio.sleep(2)
+async def start(app):
+ app['client']=ClientSession();app['start_lock']=asyncio.Lock()
+ app['process_monitor']=asyncio.create_task(watch_children())
 async def cleanup(app):
+ app['process_monitor'].cancel()
+ try:await app['process_monitor']
+ except asyncio.CancelledError:pass
  await app['client'].close()
  for proc in reversed(PROCS):
   if proc.poll() is None:proc.terminate()
@@ -194,8 +213,8 @@ def main():
  authority=Path('/data/.Xauthority');authority.touch(mode=0o600,exist_ok=True);authority.chmod(0o600)
  os.environ['XAUTHORITY']=str(authority)
  subprocess.run(['xauth','-f',str(authority),'add',':99','MIT-MAGIC-COOKIE-1',secrets.token_hex(16)],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
- launch(['Xvfb',':99','-screen','0','1440x900x24','-nolisten','tcp','-auth',str(authority)])
- time.sleep(1)
+ display=launch(['Xvfb',':99','-screen','0','1440x900x24','-nolisten','tcp','-auth',str(authority)])
+ wait_for_display(display)
  launch(['chromium','--user-data-dir=/data/chrome','--remote-debugging-address=127.0.0.1','--remote-debugging-port=9222','--no-first-run','--no-default-browser-check','--disable-dev-shm-usage','https://www.linkedin.com/login'])
  launch(['x11vnc','-display',':99','-localhost','-forever','-shared','-nopw','-rfbport','5900'])
  launch(['websockify','--web=/usr/share/novnc','127.0.0.1:6080','127.0.0.1:5900'])
