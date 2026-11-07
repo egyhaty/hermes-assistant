@@ -1,0 +1,22 @@
+name: Hermes Jobs v2 checks
+on:
+  pull_request:
+    paths:
+      - 'jobs_v2/**'
+      - 'tests/test_jobs_v2_*.py'
+      - '.github/workflows/jobs-v2-checks.yml'
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile and run Jobs v2 unit tests
+        run: |
+          python -m compileall -q jobs_v2
+          python -m unittest discover -s tests -p 'test_jobs_v2_*.py' -v
