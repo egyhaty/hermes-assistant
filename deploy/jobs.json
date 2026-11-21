@@ -51,7 +51,7 @@
             "containers": [
               {
                 "name": "jobs",
-                "image": "ghcr.io/egyhaty/hermes-assistant-jobs@sha256:972fffa16f0130c9871f168f70b61e2eaafb864418bebc32c275ab832ebcb043",
+                "image": "ghcr.io/egyhaty/hermes-assistant-jobs@sha256:32ed531710110a566f40b95a7505ceedd3795c614550dbda62e676ed83bd128d",
                 "env": [
                   {
                     "name": "JOB_RUN_SECONDS",
@@ -60,6 +60,18 @@
                   {
                     "name": "JOB_FINISH_SEARCH",
                     "value": "1"
+                  },
+                  {
+                    "name": "JOB_APPLICATION_ENGINE",
+                    "value": "naukrigulf"
+                  },
+                  {
+                    "name": "JOB_SCREENING_MODE",
+                    "value": "local"
+                  },
+                  {
+                    "name": "JOB_SCREENING_SHARING_APPROVED",
+                    "value": "0"
                   }
                 ],
                 "envFrom": [
@@ -422,7 +434,7 @@
                 "containers": [
                   {
                     "name": "scheduler",
-                    "image": "ghcr.io/egyhaty/hermes-assistant-jobs@sha256:972fffa16f0130c9871f168f70b61e2eaafb864418bebc32c275ab832ebcb043",
+                    "image": "ghcr.io/egyhaty/hermes-assistant-jobs@sha256:32ed531710110a566f40b95a7505ceedd3795c614550dbda62e676ed83bd128d",
                     "command": [
                       "python",
                       "/opt/worker/scheduler.py"
