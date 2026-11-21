@@ -1,8 +1,9 @@
 """Authenticated job panel and private remote desktop; no automatic run at startup."""
-import asyncio,base64,hashlib,hmac,json,os,signal,subprocess,sys,time,fcntl,secrets
+import asyncio,base64,hashlib,hmac,json,os,signal,subprocess,sys,time,fcntl,secrets,urllib.request,urllib.parse
 from pathlib import Path
 from aiohttp import web,ClientSession,WSMsgType
 from worker_guard import validate,profile_digest,profile_ready_error,require_ready
+from job_sources import SOURCES,Store,discover,search_url
 from process_health import clean_stale_display,wait_for_display,failed_children
 PROCS=[]
 DATA_LOCK=None
@@ -92,12 +93,14 @@ async def auth(request,handler):
    if request.path=='/jobs/panel/api/run':print('Jobs Start rejected: missing or expired web session',flush=True)
    if request.method=='GET' and '/api/' not in request.path and request.headers.get('Upgrade','').lower()!='websocket':raise web.HTTPSeeOther('/jobs/login')
    raise web.HTTPUnauthorized()
- if request.method=='POST' and request.path in ('/control/start','/control/scheduled-start','/control/schedule-check','/jobs/panel/api/run'):
+ if request.method=='POST' and request.path in ('/control/start','/control/scheduled-start','/control/schedule-check','/jobs/panel/api/run','/jobs/discovery/open-site'):
   if failed_children(PROCS):raise web.HTTPServiceUnavailable(text='Worker services unavailable; recovery pending')
   async with request.app['start_lock']:return await handler(request)
  return await handler(request)
 
 async def handle(request):
+ if request.path.startswith('/jobs/discovery/'):
+  return await discovery_handle(request)
  if request.path in ('/control/scheduled-start','/control/schedule-check'):
   if request.method!='POST':raise web.HTTPMethodNotAllowed(request.method,['POST'])
   async with request.app['client'].get('http://127.0.0.1:5000/api/status',timeout=10) as r:status=await r.json()
@@ -133,7 +136,7 @@ async def handle(request):
   response=web.HTTPSeeOther('/jobs/');response.set_cookie('jobs_session',session,max_age=21600,path='/jobs/',secure=True,httponly=True,samesite='Strict');return response
  if request.path=='/jobs/logout' and request.method=='POST':
   SESSIONS.pop(request.cookies.get('jobs_session',''),None);response=web.HTTPSeeOther('/jobs/login');response.del_cookie('jobs_session',path='/jobs/');return response
- if request.path=='/jobs/':return web.Response(text=HTML,content_type='text/html')
+ if request.path=='/jobs/':return web.Response(text=Path(__file__).with_name('jobs.html').read_text(),content_type='text/html',headers={'Cache-Control':'no-store'})
  if request.path=='/jobs/resume' and request.method=='POST':
   reader=await request.multipart();part=await reader.next()
   if part is None or part.name!='resume':raise web.HTTPBadRequest()
@@ -184,10 +187,60 @@ async def watch_children():
    print('Critical worker child exited; health checks will trigger recovery: '+json.dumps(failed),flush=True)
    return
   await asyncio.sleep(2)
+async def collect_sources(app,term):
+ for source in SOURCES:
+  result=await asyncio.to_thread(discover,source,term)
+  await asyncio.to_thread(app['discovery_store'].save,result)
+
+async def discovery_handle(request):
+ app=request.app
+ if request.path=='/jobs/discovery/open-site':
+  if request.method!='POST':raise web.HTTPMethodNotAllowed(request.method,['POST'])
+  try:
+   payload=await request.json();source=payload.get('source')
+   if not isinstance(source,str) or source not in SOURCES:raise ValueError()
+  except (ValueError,AttributeError):return web.json_response({'error':'Choose a supported site.'},status=400)
+  async with app['client'].get('http://127.0.0.1:5000/api/status',timeout=10) as response:status=await response.json()
+  if status.get('running'):return web.json_response({'error':'Stop the application run before opening another site in the worker browser.'},status=409)
+  url='https://'+SOURCES[source]['host']+'/'
+  def open_tab():
+   req=urllib.request.Request('http://127.0.0.1:9222/json/new?'+urllib.parse.quote(url,safe=''),method='PUT')
+   with urllib.request.urlopen(req,timeout=5) as response:return json.load(response)
+  try:await asyncio.to_thread(open_tab)
+  except Exception:return web.json_response({'error':'Could not open the worker browser. Open the private desktop to check it.'},status=503)
+  return web.json_response({'opened':True,'source':source,'login_verified':False,'desktop_url':'/jobs/desktop/vnc.html?autoconnect=1&resize=scale&path=jobs/desktop/websockify'})
+ if request.path=='/jobs/discovery/status':
+  if request.method!='GET':raise web.HTTPMethodNotAllowed(request.method,['GET'])
+  data=await asyncio.to_thread(app['discovery_store'].snapshot,Path('/data/all excels/all_applied_applications_history.csv'))
+  task=app.get('discovery_task')
+  if task and task.done() and not task.cancelled() and task.exception():data['collection_error']='Collection failed; check worker logs. No applications were sent.'
+  data.update(running=bool(task and not task.done()),sources=[dict(id=k,name=v['name'],search_url=search_url(k,app['discovery_term'])) for k,v in SOURCES.items()])
+  return web.json_response(data,headers={'Cache-Control':'no-store'})
+ if request.path=='/jobs/discovery/scan':
+  if request.method!='POST':raise web.HTTPMethodNotAllowed(request.method,['POST'])
+  task=app.get('discovery_task')
+  if task and not task.done():return web.json_response({'error':'A collection is already running.'},status=409)
+  try:
+   payload=await request.json();term=payload.get('term','')
+   if not isinstance(term,str):raise ValueError()
+   search_url('linkedin',term)
+  except (ValueError,TypeError,AttributeError):return web.json_response({'error':'Enter job keywords, up to 100 characters.'},status=400)
+  app['discovery_term']=term.strip()
+  app['discovery_task']=asyncio.create_task(collect_sources(app,term.strip()))
+  return web.json_response({'running':True,'applications_sent':0},status=202)
+ raise web.HTTPNotFound()
+
 async def start(app):
+ app['discovery_store']=Store(Path('/data/job-discovery.sqlite3'))
+ app['discovery_task']=None;app['discovery_term']='DevOps Engineer'
  app['client']=ClientSession();app['start_lock']=asyncio.Lock()
  app['process_monitor']=asyncio.create_task(watch_children())
 async def cleanup(app):
+ task=app.get('discovery_task')
+ if task and not task.done():
+  task.cancel()
+  try:await task
+  except asyncio.CancelledError:pass
  app['process_monitor'].cancel()
  try:await app['process_monitor']
  except asyncio.CancelledError:pass
