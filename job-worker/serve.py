@@ -202,13 +202,10 @@ async def discovery_handle(request):
   except (ValueError,AttributeError):return web.json_response({'error':'Choose a supported site.'},status=400)
   async with app['client'].get('http://127.0.0.1:5000/api/status',timeout=10) as response:status=await response.json()
   if status.get('running'):return web.json_response({'error':'Stop the application run before opening another site in the worker browser.'},status=409)
-  url='https://'+SOURCES[source]['host']+'/'
-  def open_tab():
-   req=urllib.request.Request('http://127.0.0.1:9222/json/new?'+urllib.parse.quote(url,safe=''),method='PUT')
-   with urllib.request.urlopen(req,timeout=5) as response:return json.load(response)
-  try:await asyncio.to_thread(open_tab)
+  from browser_sessions import open_board
+  try:opened=await asyncio.to_thread(open_board,source)
   except Exception:return web.json_response({'error':'Could not open the worker browser. Open the private desktop to check it.'},status=503)
-  return web.json_response({'opened':True,'source':source,'login_verified':False,'desktop_url':'/jobs/desktop/vnc.html?autoconnect=1&resize=scale&path=jobs/desktop/websockify'})
+  return web.json_response({'opened':True,'source':source,'login_verified':False,**opened,'desktop_url':'/jobs/desktop/vnc.html?autoconnect=1&resize=scale&path=jobs/desktop/websockify'})
  if request.path=='/jobs/discovery/status':
   if request.method!='GET':raise web.HTTPMethodNotAllowed(request.method,['GET'])
   data=await asyncio.to_thread(app['discovery_store'].snapshot,Path('/data/all excels/all_applied_applications_history.csv'))
