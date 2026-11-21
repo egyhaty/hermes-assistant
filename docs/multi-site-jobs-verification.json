@@ -1,0 +1,17 @@
+{
+  "date": "2026-11-22",
+  "image": "ghcr.io/egyhaty/hermes-assistant-jobs@sha256:9d52553417fd9be3dde617ce192abad428fa95283787ba7b50a92e9bb92e1e06",
+  "source_commit": "7b7c599835022536b8c1c3d6bffa9b9814fce83d",
+  "workflow_run": 44949194035,
+  "local_job_worker_tests": 48,
+  "image_high_critical_fixable_findings": 0,
+  "rollout": "successful",
+  "worker_health_http": 200,
+  "public_anonymous_jobs_http": 303,
+  "public_anonymous_redirect": "/jobs/login",
+  "worker_browser_linkedin_path_after_rollout": "/feed/foryou/",
+  "actual_submissions_tested": false,
+  "multi_site_application_adapters": "pending",
+  "public_search_observation": "One LinkedIn guest search returned 10 listings before access restrictions; other boards returned HTTP 403 or timeout. Live collection is not certified on all boards.",
+  "ui": "rendered and reviewed using synthetic data; deployed jobs.html SHA256 matched local source"
+}
