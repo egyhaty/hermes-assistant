@@ -72,7 +72,7 @@ def run(check=False, execute=False, terms=None):
             return state
         if os.environ.get('JOB_SCREENING_MODE','local')=='groq' and (not os.environ.get('GROQ_API_KEY') or os.environ.get('JOB_AI_PROVIDER') != 'groq' or os.environ.get('JOB_SCREENING_SHARING_APPROVED')!='1'):
             raise RuntimeError('The configured free-plan screening provider is missing')
-        known = {x['url'] for x in journal.snapshot()}
+        known = journal.known_urls()
         seen = set()
         for term in terms or TERMS:
             # Finish collecting a query before navigating away to its listings.

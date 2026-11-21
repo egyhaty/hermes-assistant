@@ -37,3 +37,10 @@ class ApplicationJournalTests(unittest.TestCase):
   self.j.reconcile_confirmation(self.url,self.digest,'Success message and Already Applied verified after reload')
   row=self.j.snapshot()[0];self.assertEqual(row['status'],'confirmed');self.assertEqual(row['attempts'],1)
   self.assertFalse(self.j.claim(self.url,self.digest))
+ def test_confirmed_totals_survive_more_than_a_page_of_skipped_reviews(self):
+  self.j.review(self.job,self.digest,True,'Reviewed role');self.j.claim(self.url,self.digest)
+  self.j.finish(self.url,'confirmed','Confirmed by platform','Success and persisted platform record')
+  with self.j.connect() as db:
+   db.executemany('INSERT INTO applications (url,source,job,cv_sha256,status,reason,updated) VALUES (?,?,?,?,?,?,?)',[(self.url+str(i),'naukrigulf','{}',self.digest,'skipped','Unmatched role',9999999999+i) for i in range(510)])
+  self.assertEqual(self.j.counts()['confirmed'],1);self.assertEqual(len(self.j.known_urls()),511)
+  self.assertEqual(self.j.activity()[0]['status'],'confirmed')

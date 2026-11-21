@@ -58,6 +58,20 @@ class Journal:
             rows = db.execute('SELECT * FROM applications ORDER BY updated DESC LIMIT 500').fetchall()
             return [dict(row, job=json.loads(row['job'])) for row in rows]
 
+    def counts(self):
+        with self.connect() as db:
+            return dict(db.execute('SELECT status,COUNT(*) FROM applications GROUP BY status'))
+
+    def known_urls(self):
+        with self.connect() as db:
+            return {row[0] for row in db.execute('SELECT url FROM applications')}
+
+    def activity(self, limit=100):
+        with self.connect() as db:
+            db.row_factory = sqlite3.Row
+            rows = db.execute('SELECT * FROM applications WHERE status!="skipped" ORDER BY updated DESC LIMIT ?', (limit,)).fetchall()
+            return [dict(row, job=json.loads(row['job'])) for row in rows]
+
     def reconcile_confirmation(self, url, cv_sha256, evidence):
         """Record independently verified platform evidence after a tracker interruption.
 

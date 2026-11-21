@@ -26,8 +26,10 @@ def status(app):
         data['exit_code'] = 0 if data.get('cancelled') else proc.returncode
     elif not proc and data.get('started_at') and not data.get('finished_at'):
         data['stop_reason'] = 'Worker restarted. Interrupted submissions need verification; they will not be retried.'
-    rows = Journal(DATA / 'job-applications.sqlite3').snapshot()
-    data['counts'] = {name: sum(r['status'] == name for r in rows) for name in ('confirmed', 'eligible', 'skipped', 'needs_input', 'uncertain', 'attempting')}
+    journal=Journal(DATA / 'job-applications.sqlite3')
+    rows = journal.activity()
+    counts=journal.counts()
+    data['counts'] = {name: counts.get(name,0) for name in ('confirmed', 'eligible', 'skipped', 'needs_input', 'uncertain', 'attempting')}
     data['applications'] = [{k: r[k] for k in ('source', 'job', 'status', 'reason', 'updated', 'attempts')} for r in rows[:100]]
     data['enabled'] = os.environ.get('JOB_APPLICATION_ENGINE') == 'naukrigulf'
     data['screening_mode'] = os.environ.get('JOB_SCREENING_MODE','local')
