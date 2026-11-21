@@ -77,6 +77,6 @@ are exported.
 
 ## Verified release — 2026-11-22
 
-The deployed image was built from `09e007f9bae22d24232a974a9e0bcbe8b3bcf7bb`: 75 tests passed and the image scan found no fixable HIGH/CRITICAL vulnerabilities. The installed readiness check verified the approved CV and signed-in NaukriGulf session. Local screening is explicitly selected; external professional-profile sharing is disabled.
+The corrected deployed image was built from `52687ff64209da28df656743e4f2eaa6035569e5`: 79 tests passed and the image scan found no fixable HIGH/CRITICAL vulnerabilities. The installed readiness check verified the approved CV and signed-in NaukriGulf session. Local screening is explicitly selected; external professional-profile sharing is disabled.
 
 `deploy/jobs.json` intentionally retains the installation defaults (zero replicas and a suspended schedule). The owner-approved live worker is activated separately, with the existing four daily slots retained. Do not sync the whole foundation merely to change the jobs image.
