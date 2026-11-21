@@ -93,12 +93,20 @@ async def auth(request,handler):
    if request.path=='/jobs/panel/api/run':print('Jobs Start rejected: missing or expired web session',flush=True)
    if request.method=='GET' and '/api/' not in request.path and request.headers.get('Upgrade','').lower()!='websocket':raise web.HTTPSeeOther('/jobs/login')
    raise web.HTTPUnauthorized()
- if request.method=='POST' and request.path in ('/control/start','/control/scheduled-start','/control/schedule-check','/jobs/panel/api/run','/jobs/discovery/open-site'):
+ if request.method=='POST' and request.path in ('/control/start','/control/scheduled-start','/control/schedule-check','/jobs/panel/api/run','/jobs/discovery/open-site','/jobs/applications/start','/jobs/applications/stop'):
   if failed_children(PROCS):raise web.HTTPServiceUnavailable(text='Worker services unavailable; recovery pending')
   async with request.app['start_lock']:return await handler(request)
  return await handler(request)
 
 async def handle(request):
+ runner=request.app.get('adapter_proc')
+ if request.path=='/jobs/panel/api/run' and runner and runner.poll() is None:
+  return web.json_response({'error':'An application cycle is already running. Stop it before using the legacy controls.'},status=409)
+ if request.path.startswith('/jobs/applications/'):
+  return await application_handle(request)
+ if request.path in ('/control/status','/control/start','/control/stop','/control/scheduled-start','/control/schedule-check') and os.environ.get('JOB_APPLICATION_ENGINE')=='naukrigulf':
+  action={'/control/status':'status','/control/start':'start','/control/stop':'stop','/control/scheduled-start':'start','/control/schedule-check':'check'}[request.path]
+  return await application_handle(request,action)
  if request.path.startswith('/jobs/discovery/'):
   return await discovery_handle(request)
  if request.path in ('/control/scheduled-start','/control/schedule-check'):
@@ -187,6 +195,27 @@ async def watch_children():
    print('Critical worker child exited; health checks will trigger recovery: '+json.dumps(failed),flush=True)
    return
   await asyncio.sleep(2)
+async def application_handle(request,action=None):
+ from adapter_control import status as adapter_status,start as start_adapter,stop as stop_adapter,check as check_adapter
+ action=action or request.path.removeprefix('/jobs/applications/')
+ if action not in ('status','start','stop','check','log'):raise web.HTTPNotFound()
+ expected='GET' if action in ('status','log') else 'POST'
+ if request.method!=expected:raise web.HTTPMethodNotAllowed(request.method,[expected])
+ if action=='status':return web.json_response(await asyncio.to_thread(adapter_status,request.app),headers={'Cache-Control':'no-store'})
+ if action=='log':
+  p=Path('/data/adapter-run.log')
+  return web.json_response({'text':p.read_text(errors='replace')[-8000:] if p.exists() else ''},headers={'Cache-Control':'no-store'})
+ try:
+  if action=='stop':return web.json_response(await asyncio.to_thread(stop_adapter,request.app))
+  async with request.app['client'].get('http://127.0.0.1:5000/api/status',timeout=10) as response:legacy=await response.json()
+  if legacy.get('running'):return web.json_response({'error':'A legacy application run is active; browser left untouched.'},status=409)
+  if action=='check':
+   runner=request.app.get('adapter_proc')
+   if runner and runner.poll() is None:return web.json_response({'ready':True,'started':False,'skipped':True})
+   return web.json_response(await asyncio.to_thread(check_adapter))
+  return web.json_response(await asyncio.to_thread(start_adapter,request.app))
+ except ValueError as error:return web.json_response({'error':str(error)},status=409)
+
 async def collect_sources(app,term):
  for source in SOURCES:
   result=await asyncio.to_thread(discover,source,term)
@@ -201,6 +230,8 @@ async def discovery_handle(request):
    if not isinstance(source,str) or source not in SOURCES:raise ValueError()
   except (ValueError,AttributeError):return web.json_response({'error':'Choose a supported site.'},status=400)
   async with app['client'].get('http://127.0.0.1:5000/api/status',timeout=10) as response:status=await response.json()
+  runner=app.get('adapter_proc')
+  if runner and runner.poll() is None:return web.json_response({'error':'An application cycle is running. Stop it before switching the private browser.'},status=409)
   if status.get('running'):return web.json_response({'error':'Stop the application run before opening another site in the worker browser.'},status=409)
   from browser_sessions import open_board
   try:opened=await asyncio.to_thread(open_board,source)
@@ -228,11 +259,14 @@ async def discovery_handle(request):
  raise web.HTTPNotFound()
 
 async def start(app):
+ app['adapter_proc']=None
  app['discovery_store']=Store(Path('/data/job-discovery.sqlite3'))
  app['discovery_task']=None;app['discovery_term']='DevOps Engineer'
  app['client']=ClientSession();app['start_lock']=asyncio.Lock()
  app['process_monitor']=asyncio.create_task(watch_children())
 async def cleanup(app):
+ from adapter_control import stop as stop_adapter
+ await asyncio.to_thread(stop_adapter,app)
  task=app.get('discovery_task')
  if task and not task.done():
   task.cancel()

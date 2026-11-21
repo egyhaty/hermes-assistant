@@ -90,3 +90,26 @@ class DiscoveryGatewayTests(unittest.IsolatedAsyncioTestCase):
     async def test_open_site_cannot_navigate_to_arbitrary_urls(self):
         response = await self.client.post('/jobs/discovery/open-site', json={'source':'https://evil.test'}, headers=self.headers)
         self.assertEqual(response.status,400)
+
+    async def test_application_status_requires_authentication(self):
+        response=await self.client.get('/jobs/applications/status',allow_redirects=False)
+        self.assertIn(response.status,(401,303))
+
+    async def test_application_start_requires_post_and_origin(self):
+        response=await self.client.get('/jobs/applications/start',headers=self.headers)
+        self.assertEqual(response.status,405)
+        response=await self.client.post('/jobs/applications/start',headers=dict(self.headers,Origin='https://evil.test'))
+        self.assertEqual(response.status,403)
+
+    async def test_legacy_start_cannot_interfere_with_an_active_adapter(self):
+        from types import SimpleNamespace
+        self.app['adapter_proc']=SimpleNamespace(poll=lambda:None)
+        response=await self.client.post('/jobs/panel/api/run',headers=self.headers)
+        self.assertEqual(response.status,409)
+
+    async def test_application_status_does_not_start_a_cycle(self):
+        with patch('adapter_control.status',return_value={'running':False,'counts':{'confirmed':1},'applications':[],'enabled':False}) as status:
+            response=await self.client.get('/jobs/applications/status',headers=self.headers)
+            self.assertEqual(response.status,200)
+            self.assertEqual((await response.json())['counts']['confirmed'],1)
+            self.assertEqual(status.call_count,1)
