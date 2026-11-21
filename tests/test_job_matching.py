@@ -23,3 +23,12 @@ class JobMatchingTests(unittest.TestCase):
  def test_local_matching_can_accept_basic_supervised_cloud_support(self):
   d=local_screen({'questions':{'user_information_all':'Professional Summary\nLinux operations\nDevOps Project'}}, {'title':'Systems Engineer','head':'Dubai, UAE','description':'Monitor Linux servers, maintain backups and troubleshoot incidents. Assist with basic Azure administration under supervision.'})
   self.assertTrue(d['eligible']);self.assertTrue(d['gaps'])
+ def test_ai_backend_role_cannot_pass_on_linux_and_backup_keywords(self):
+  d=local_screen({'questions':{'user_information_all':'Professional Summary\nLinux operations\nDevOps Project\nAWS personal labs only.'}}, {'title':'AI Automation & DevOps Engineer', 'description':'Manage Linux servers, backups and incidents. Requirements\nStrong experience with Node.js, Python, or similar backend technologies.\nExperience integrating AI/LLM APIs into production systems.\nExperience with cloud platforms such as AWS, Azure, or Google Cloud.\nStrong PostgreSQL experience.\nPreferred Qualifications\nKubernetes experience.'})
+  self.assertFalse(d['eligible']);self.assertTrue(any('AI' in x for x in d['required_unknown']));self.assertTrue(any('cloud' in x for x in d['required_unknown']))
+ def test_generic_cloud_experience_does_not_become_verified_from_labs(self):
+  d=local_screen({'questions':{'user_information_all':'Professional Summary\nLinux operations\nDevOps Project\nAWS labs only.'}}, {'title':'DevOps Engineer','description':'Maintain Linux servers, backups and incidents.\nExperience with cloud platforms.\nPreferred Qualifications\nBasic Azure knowledge.'})
+  self.assertFalse(d['eligible'])
+ def test_core_linux_role_with_optional_cloud_remains_eligible(self):
+  d=local_screen({'questions':{'user_information_all':'Professional Summary\nLinux operations\nDevOps Project'}}, {'title':'Linux Administrator','description':'Monitor Linux servers, maintain backups, troubleshoot incidents and DNS.\nCloud exposure is optional.'})
+  self.assertTrue(d['eligible'])

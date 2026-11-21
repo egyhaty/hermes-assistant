@@ -56,6 +56,14 @@ exception after the submit action was reconciled with the success page and a
 fresh listing check, without another click. Private evidence stays on the
 worker/user workspace, not in Git.
 
+A subsequent local-matching run confirmed a second application, but review of
+the stored requirements found unsupported backend/AI engineering requirements.
+The cycle was stopped and the screen was tightened before resuming. The record
+remains a real confirmed submission with its screening-audit note; it must not
+be portrayed as a verified match or removed from the application count. Regression
+checks cover AI/backend roles that also contain Linux/backup keywords and generic
+cloud experience that must not be inferred from labs.
+
 ## Runtime
 
 `python /opt/worker/naukri_worker.py --check` checks the approved profile and

@@ -109,6 +109,7 @@ def run(check=False, execute=False, terms=None):
                     state['skipped'] += 1
                     continue
                 decision = screen(config, {k: job[k] for k in ('title', 'company', 'head', 'description')})
+                job['screening'] = decision
                 reason = decision['reason'] + (' Gaps: ' + '; '.join(decision['gaps']) if decision['gaps'] else '')
                 journal.review(job, digest, decision['eligible'], reason)
                 known.add(job['url'])

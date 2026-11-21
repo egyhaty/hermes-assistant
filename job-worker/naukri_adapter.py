@@ -16,6 +16,11 @@ def inspect_job(page, url):
     data = page.js('''(()=>{const text=document.body.innerText;const title=document.querySelector('h1')?.innerText.trim()||'';const lines=text.split('\\n').map(x=>x.trim()).filter(Boolean);const at=lines.indexOf(title);const start=text.indexOf('Job Description');let end=text.indexOf('Employment Type',start);if(end<0)end=text.indexOf('Company Industry',start);if(end<0)end=text.indexOf('Disclaimer:',start);const loc=text.indexOf('Job Location');const edu=text.indexOf('Education',loc);return {url:location.origin+location.pathname,title,company:at>=0?lines[at+1]:'',location:loc>=0?text.slice(loc+12,edu>loc?edu:loc+180).trim():'',head:text.slice(0,1500),description:start>=0?text.slice(start,end>start?end:start+10000):'',easyApply:Array.from(document.querySelectorAll('button')).some(x=>x.innerText.trim()==='Easy Apply'&&!x.disabled),challenge:/security verification|verify you are not a bot|Just a moment/i.test(text.slice(0,1200))};})()''')
     if data['challenge']:
         raise RuntimeError('Naukrigulf requires manual security verification')
+    # Some templates wrap the title and company in one multiline h1.
+    title_lines = [line.strip() for line in data['title'].splitlines() if line.strip()]
+    if len(title_lines) > 1:
+        data['title'] = title_lines[0]
+        data['company'] = data['company'] or title_lines[1]
     if canonical_url('naukrigulf', data['url']) != url:
         raise RuntimeError('The browser left the reviewed job URL')
     if not data['title'] or not data['description']:

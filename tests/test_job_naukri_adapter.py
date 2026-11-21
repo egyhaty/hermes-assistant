@@ -3,7 +3,7 @@ from pathlib import Path
 from unittest.mock import patch
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'job-worker'))
 from application_journal import Journal
-from naukri_adapter import submit
+from naukri_adapter import submit,inspect_job
 
 class NaukriAdapterTests(unittest.TestCase):
  def setUp(self):
@@ -24,6 +24,14 @@ class NaukriAdapterTests(unittest.TestCase):
  def test_existing_platform_application_never_clicks_apply(self):
   p=self.page({});job=dict(self.job,head='Already Applied')
   self.assertEqual(submit(p,job,self.j,self.digest),'already_applied');self.assertEqual(p.clicks,0)
+ def test_multiline_heading_keeps_company_separate_from_job_title(self):
+  job=dict(self.job,title='Linux Administrator\nExample Company',company='',description='Monitor Linux servers and backups.',challenge=False)
+  class Page:
+   def goto(self,url):pass
+   def wait(self,*args):return True
+   def js(self,code):return job
+  result=inspect_job(Page(),self.job['url'])
+  self.assertEqual(result['title'],'Linux Administrator');self.assertEqual(result['company'],'Example Company')
  def test_unknown_required_form_gets_no_additional_submit(self):
   p=self.page({'head':'Complete application','fields':[{'name':'work_permit','required':True}],'buttons':['Submit']})
   self.assertEqual(submit(p,self.job,self.j,self.digest),'needs_input');self.assertEqual(p.clicks,1)

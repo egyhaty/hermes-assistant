@@ -1,4 +1,4 @@
-"""CV-based job screening with the configured free-plan model; never generates application answers."""
+"""Local CV-based screening with an optional consent-gated provider; never fills application answers."""
 import json
 import os
 import re
@@ -74,6 +74,22 @@ def local_screen(config, job):
         verified = ''
     if 'linux' not in verified:
         unknown.append('The approved profile does not establish Linux operations experience')
+    if re.search(r'\bAI\b|machine learning|backend|software develop|full.?stack|data engineer', title, re.I):
+        unknown.append('The primary software/AI engineering specialism is not established by the approved CV')
+    # A preferred section must not weaken a hard requirement earlier in the JD.
+    essential = re.split(r'Preferred Qualifications|Preferred Skills|Nice.to.have', job.get('description', ''), maxsplit=1, flags=re.I)[0]
+    for line in re.split(r'[\n!?•●]', essential):
+        optional = re.search(r'preferred|optional|nice.to.have|added advantage', line, re.I)
+        if optional:
+            continue
+        if re.search(r'\b(?:AI|LLM)\b|language models|machine learning', line, re.I) and re.search(r'experience|integrat|build|develop|production', line, re.I):
+            unknown.append('Required AI/application engineering experience is not established by the approved CV')
+        if re.search(r'\bcloud\b', line, re.I) and re.search(r'experience|manag|design|build|deploy|administer|provision|architect', line, re.I) and not re.search(r'basic|fundamental|under supervision|assist|learning|exposure', line, re.I):
+            unknown.append('Unqualified cloud engineering/operations requirements exceed the verified labs')
+        if re.search(r'Node\.js|\bJava\b|\.NET|React|Spring Boot', line, re.I) and re.search(r'strong|proficien|expert|develop|experience|required', line, re.I):
+            unknown.append('Required software development technologies need further verification')
+        if re.search(r'PostgreSQL', line, re.I) and 'postgresql' not in verified and re.search(r'strong|proficien|expert|experience|required|administer', line, re.I):
+            unknown.append('Required PostgreSQL expertise is not established by the approved CV')
     if re.search(r'(Emirati|UAE national|UAE citizen).{0,35}(only|mandatory|required)', text, re.I):
         unknown.append('The role is restricted to Emirati nationals')
     for skill in ('AIX', 'OpenShift', 'InterSystems', 'Murex', 'FLEXCUBE', 'Control-M', 'NVIDIA', 'DeepStream', 'SAP Basis'):
