@@ -68,6 +68,11 @@ def run(check=False, execute=False, terms=None):
         if not page.js("document.body.innerText.includes('Welcome Back!')"):
             raise RuntimeError('Sign in to Naukrigulf in the private browser first')
         if check:
+            if os.environ.get('JOB_SCREENING_MODE','local') == 'openai':
+                from openai_screening import configuration_error
+                error = configuration_error()
+                if error:
+                    raise RuntimeError(error)
             state.update(ready=True, stop_reason='Signed-in browser and approved CV verified; no applications started.')
             return state
         if os.environ.get('JOB_SCREENING_MODE','local')=='groq' and (not os.environ.get('GROQ_API_KEY') or os.environ.get('JOB_AI_PROVIDER') != 'groq' or os.environ.get('JOB_SCREENING_SHARING_APPROVED')!='1'):

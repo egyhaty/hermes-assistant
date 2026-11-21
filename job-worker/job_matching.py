@@ -16,6 +16,11 @@ def professional_facts(config):
     # Only professional facts are needed for matching; omit contact details.
     text = re.sub(r'[\w.+-]+@[\w.-]+', '[email omitted]', text)
     text = re.sub(r'\+?971[\d \-]{8,18}', '[phone omitted]', text)
+    text = re.sub(r'(?<!\w)(?:\+|00)\d(?:[\s().-]*\d){7,14}(?!\d)', '[phone omitted]', text)
+    for key in ('phone_number', 'email', 'email_address'):
+        value = str(config.get('personals', {}).get(key, '')).strip()
+        if value:
+            text = text.replace(value, '[contact omitted]')
     sections = {}
     for name, end in [('Professional Summary', 'DevOps Project'), ('Technical Skills', 'Professional Experience'), ('DevOps Project', 'Technical Skills'), ('Certification and Education', 'Boundary:')]:
         if name in text:
@@ -23,7 +28,10 @@ def professional_facts(config):
             sections[name] = piece[:1600]
     sections['Employment dates and titles'] = re.findall(r'.*(?:\|.*20\d\d|Senior Technical Support Engineer|Co Founder and Systems Engineering Lead).*', text)[:12]
     if 'Boundary:' in text:
-        sections['Limits'] = text.split('Boundary:', 1)[1][:700]
+        # Sharing consent covers professional skills, projects and education.
+        # Residency/work-permit answers belong to the private application profile.
+        limits = text.split('Boundary:', 1)[1].split('Owner-confirmed', 1)[0]
+        sections['Limits'] = '\n'.join(line for line in limits.splitlines() if not re.search(r'residenc|visa|work.permit|legally.authorized', line, re.I))[:700]
     if not sections:
         raise ValueError('Verified professional profile is missing')
     return sections
@@ -31,7 +39,7 @@ def professional_facts(config):
 
 def parse_decision(raw):
     data = json.loads(raw)
-    if not isinstance(data, dict) or type(data.get('eligible')) is not bool or not isinstance(data.get('reason'), str):
+    if not isinstance(data, dict) or type(data.get('eligible')) is not bool or not isinstance(data.get('reason'), str) or not data['reason'].strip():
         raise ValueError('Invalid screening decision')
     for key in ('required_unknown', 'gaps'):
         if not isinstance(data.get(key), list) or not all(isinstance(x, str) for x in data[key]):
@@ -131,15 +139,24 @@ def local_screen(config, job):
 
 
 def screen(config, job):
-    if os.environ.get('JOB_SCREENING_MODE', 'local') == 'local':
+    mode = os.environ.get('JOB_SCREENING_MODE', 'local')
+    if mode == 'local':
         return local_screen(config, job)
+    if mode not in ('groq', 'openai'):
+        raise ValueError('Unsupported job screening mode')
     job = dict(job)
     if 'head' in job:
         # Board headers contain the signed-in account name; only forward the
         # actual job header beginning at the reviewed title.
         title = job.get('title', '')
-        job['head'] = job['head'][job['head'].find(title):] if title and title in job['head'] else ''
+        job['head'] = job['head'][job['head'].find(title):].split('Job Description', 1)[0] if title and title in job['head'] else ''
+    job = {key: job.get(key, '') for key in ('title', 'company', 'head', 'description')}
     prompt = json.dumps({'applicant': professional_facts(config), 'job': job}, ensure_ascii=False)
+    if mode == 'openai':
+        from openai_screening import OpenAIScreening
+        if len(prompt) > 48000:
+            return {'eligible': False, 'reason': 'Full requirements exceed the screening input limit; manual review needed.', 'required_unknown': ['Full job requirements need review'], 'gaps': []}
+        return parse_decision(OpenAIScreening().invoke(SYSTEM, prompt))
     # The existing pacing budget reserves 1,024 output tokens. Include the
     # fixed system message in its estimate, and do not truncate requirements.
     if len(prompt) + len(SYSTEM) > 7600:

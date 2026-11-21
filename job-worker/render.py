@@ -8,7 +8,7 @@ def render(image):
  pod={'hostname':'hermes-jobs','nodeSelector':{'kubernetes.io/hostname':'devops'},'automountServiceAccountToken':False,'terminationGracePeriodSeconds':30,
  'imagePullSecrets':[{'name':'hermes-registry'}],
  'securityContext':{'runAsNonRoot':True,'runAsUser':10000,'runAsGroup':10000,'fsGroup':10000,'fsGroupChangePolicy':'OnRootMismatch','seccompProfile':{'type':'Localhost','localhostProfile':'hermes-jobs-browser.json'}},
- 'containers':[{'name':'jobs','image':image,'env':[{'name':'JOB_RUN_SECONDS','value':'0'},{'name':'JOB_FINISH_SEARCH','value':'1'}],'envFrom':[{'secretRef':{'name':'hermes-jobs-auth'}},{'secretRef':{'name':'hermes-free-api'}},{'secretRef':{'name':'hermes-jobs-groq','optional':True}}],
+ 'containers':[{'name':'jobs','image':image,'env':[{'name':'JOB_RUN_SECONDS','value':'0'},{'name':'JOB_FINISH_SEARCH','value':'1'}],'envFrom':[{'secretRef':{'name':'hermes-jobs-auth'}},{'secretRef':{'name':'hermes-free-api'}},{'secretRef':{'name':'hermes-jobs-groq','optional':True}},{'secretRef':{'name':'hermes-jobs-openai','optional':True}}],
  'securityContext':{'readOnlyRootFilesystem':True,'allowPrivilegeEscalation':False,'capabilities':{'drop':['ALL']},'appArmorProfile':{'type':'Localhost','localhostProfile':'hermes-jobs-browser'}},
  'ports':[{'name':'http','containerPort':9118}],
  'resources':{'requests':{'cpu':'250m','memory':'512Mi'},'limits':{'cpu':'1','memory':'2Gi'}},

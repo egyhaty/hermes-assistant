@@ -90,6 +90,12 @@
                       "name": "hermes-jobs-groq",
                       "optional": true
                     }
+                  },
+                  {
+                    "secretRef": {
+                      "name": "hermes-jobs-openai",
+                      "optional": true
+                    }
                   }
                 ],
                 "securityContext": {

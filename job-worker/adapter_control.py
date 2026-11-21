@@ -45,6 +45,11 @@ def start(app):
     error = profile_ready_error()
     if error:
         raise ValueError(error)
+    if os.environ.get('JOB_SCREENING_MODE','local') == 'openai':
+        from openai_screening import configuration_error
+        error = configuration_error()
+        if error:
+            raise ValueError(error)
     if os.environ.get('JOB_SCREENING_MODE','local')=='groq' and (not os.environ.get('GROQ_API_KEY') or os.environ.get('JOB_AI_PROVIDER') != 'groq' or os.environ.get('JOB_SCREENING_SHARING_APPROVED')!='1'):
         raise ValueError('The configured free-plan screening provider is missing')
     old = DATA / 'adapter-run.log'
