@@ -7,6 +7,7 @@ p=root/'app.py';s=p.read_text().replace('LOG_PATH = os.path.join(ROOT, ".bot_run
 s=s.replace('DEFAULTS = _load_defaults()','DEFAULTS = _load_defaults()\nDEFAULTS.get("secrets", {})["llm_api_key"] = ""')
 s+='\n# Container deployment entry point; the authenticated gateway is the only ingress.\n'
 p.write_text(s)
+
 # Never use abandoned UC or its sandbox-disabling defaults. Attach ordinary Selenium
 # to the already sandboxed, persistent, manually sign-in capable Chromium process.
 (root/'modules/open_chrome.py').write_text('''from selenium import webdriver
@@ -119,4 +120,20 @@ s=s.replace('if _WORKER_SUBMIT_ATTEMPTS[0]>=10:', 'if os.environ.get("JOB_FINISH
 s=s.replace('linkedIn_tab = False', 'if os.environ.get("JOB_FINISH_SEARCH")=="1":\n    switch_number=float("inf")\n    run_non_stop=False\nlinkedIn_tab = False')
 s=s.replace('        current_count = 0', '        current_count = 0\n        _visited_pages=set()')
 s=s.replace('                pagination_element, current_page = get_page_info()', '                pagination_element, current_page = get_page_info()\n                _page_key=(current_page,tuple(el.get_attribute("data-occludable-job-id") for el in driver.find_elements(By.XPATH,"//li[@data-occludable-job-id]")))\n                if _page_key in _visited_pages:\n                    print("Search term finished: page did not advance.",flush=True)\n                    break\n                _visited_pages.add(_page_key)')
+p.write_text(s)
+
+# Resolve known location before navigation. Do not continue on an unrecognised
+# layout: older selectors and account-default geography are unsafe assumptions.
+p=root/'runAiBot.py';s=p.read_text()
+s='from linkedin_compat import search_url as worker_search_url, require_supported_layout, failure_reason\n'+s
+needle='driver.get(f"https://www.linkedin.com/jobs/search/?keywords={searchTerm}")'
+assert needle in s, 'Pinned search navigation changed'
+s=s.replace(needle,'driver.get(worker_search_url(searchTerm, search_location, easy_apply_only))\n        require_supported_layout(driver)',1)
+s=s.replace('record_run_failure("Browser window closed or session invalid")','record_run_failure(failure_reason(e))')
+s=s.replace('record_run_failure("Application error: "+type(e).__name__)','record_run_failure(failure_reason(e))')
+s=s.replace('logger.error("The browser window was closed or the session became invalid. Stopping.", exc_info=e)','logger.error(failure_reason(e), exc_info=e)')
+s=s.replace('logger.error("The browser window was closed or the session became invalid. Exiting.", exc_info=e)','logger.error(failure_reason(e), exc_info=e)')
+s=s.replace('        pyautogui.alert(e,alert_title)','        print(failure_reason(e),flush=True)')
+s=s.replace('\n        logger.error(failure_reason(e), exc_info=e)','\n        logger.error(failure_reason(e), exc_info=e)\n        raise SystemExit(1)')
+s=s.replace('        print(failure_reason(e),flush=True)','        print(failure_reason(e),flush=True)\n        raise SystemExit(1)')
 p.write_text(s)

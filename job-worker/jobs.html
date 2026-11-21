@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hermes · Jobs</title>
+<style>
+:root{color-scheme:dark;font:16px system-ui;background:#0b101b;color:#e8edf7}body{max-width:1160px;margin:auto;padding:40px 24px}h1{font-size:38px;margin:5px 0}h2{font-size:20px}p{color:#abb9d0;line-height:1.6}a{color:#92c5ff}header,.toolbar,.row{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}.brand{color:#83e4c9;letter-spacing:3px;font-size:12px}.box,.site,.job{border:1px solid #28344a;background:#121b2b;border-radius:14px;padding:20px;margin:14px 0}.sites{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}.site{margin:0}.site a{display:block;margin-top:12px}button,input,select{font:inherit;border-radius:8px;border:1px solid #3b4d68;padding:11px;background:#19263c;color:inherit}button{cursor:pointer;background:#a3edda;color:#10221f;font-weight:650}button:disabled{opacity:.5;cursor:wait}input{flex:1;min-width:200px}.tag{font-size:12px;padding:4px 9px;background:#22334c;border-radius:20px;color:#bdd2f2}.muted{color:#99abc5;font-size:14px}.warn{border-color:#775e32;color:#f0d3a0}#error{color:#ffb6b6}nav{display:flex;gap:18px;flex-wrap:wrap}summary{cursor:pointer}details{margin:18px 0}label{display:block;margin:12px 0}form{display:flex;gap:12px;flex-wrap:wrap}.job h2{margin:8px 0}.job p{margin:7px 0}#checks{font-size:14px}.status{min-height:22px}small{line-height:1.6}
+</style>
+<header><div><div class="brand">HERMES WORKSPACE</div><h1>Your job search, in one place.</h1><p>Discover opportunities across five boards. Track collection and applications separately.</p></div><span class="tag">United Arab Emirates</span></header>
+<nav><a href="/jobs/panel/">LinkedIn application controls</a><a href="/jobs/panel/history">Application history</a><a href="/jobs/desktop/vnc.html?autoconnect=1&amp;resize=scale&amp;path=jobs/desktop/websockify">Private browser / sign-in</a></nav>
+<section class="box"><h2>Search every board</h2><form id="scan"><input id="term" value="DevOps Engineer" maxlength="100" aria-label="Job keywords" required><button id="scan-button">Collect new listings</button></form><p class="muted">Public search only. This button sends job keywords, never your CV or application answers. Protected sites may require a manual visit.</p><div id="progress" class="status" role="status"></div><div id="error" role="alert"></div></section>
+<div id="sites" class="sites"></div>
+<section class="box warn"><strong>Application compatibility</strong><p>LinkedIn's new search layout is not supported by the current application adapter. It stops with an explicit layout error rather than reporting a closed browser. Automatic application connectors for Indeed, Bayt, NaukriGulf and GulfTalent are pending. Collected listings are never counted as applications.</p></section>
+<section><div class="toolbar"><h2>Collected opportunities <span id="count" class="tag">0</span></h2><div><select id="filter" aria-label="Filter by board"><option value="">All boards</option></select> <label style="display:inline"><input id="uae" type="checkbox" style="min-width:0"> Verified UAE location only</label></div></div><div id="results"></div></section>
+<details class="box"><summary>Last collection result by site</summary><div id="checks"></div></details>
+<details class="box"><summary>Application profile and CV</summary><p>Application settings remain in the LinkedIn controls. Unknown answers stay unanswered. Changes to your saved facts require completing profile setup again.</p><form method="post" action="/jobs/resume" enctype="multipart/form-data"><input type="file" name="resume" accept="application/pdf" aria-label="Current PDF CV" required><button>Upload CV</button></form><form method="post" action="/jobs/ready" style="margin-top:15px"><button>Complete profile setup</button></form></details>
+<script>
+let state={jobs:[],checks:[],sources:[],running:false};
+function el(tag,text,cls){const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(cls)n.className=cls;return n}
+function link(text,url){const n=el('a',text);n.href=url;n.target='_blank';n.rel='noopener noreferrer';return n}
+async function api(path,options){const r=await fetch('/jobs/discovery/'+path,options);if(r.status===401){location.href='/jobs/login';throw Error('Please sign in again.')}const data=await r.json();if(!r.ok)throw Error(data.error||'Request failed');return data}
+function render(){
+ const sites=document.getElementById('sites');sites.replaceChildren();
+ for(const s of state.sources){const box=el('div',undefined,'site');const button=el('button','Sign in on worker');button.onclick=async()=>{button.disabled=true;try{const r=await api('open-site',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({source:s.id})});location.href=r.desktop_url}catch(e){document.getElementById('error').textContent=e.message;button.disabled=false}};box.append(el('strong',s.name),el('p','Discovery connector · application adapter pending','muted'),button,link('Open UAE search',s.search_url));sites.append(box)}
+ if(state.collection_error)document.getElementById('error').textContent=state.collection_error;
+ document.getElementById('scan-button').disabled=state.running;
+ document.getElementById('progress').textContent=state.running?'Collecting… each site has a bounded timeout.':'Collection is idle. No applications are sent by this search.';
+ const list=state.jobs.filter(j=>(!document.getElementById('filter').value||j.source===document.getElementById('filter').value)&&(!document.getElementById('uae').checked||j.location_verified));
+ document.getElementById('count').textContent=list.length;
+ const results=document.getElementById('results');results.replaceChildren();
+ if(!list.length)results.append(el('p','No collected listings match these filters. Run a search or check site access below.'));
+ for(const j of list){const box=el('article',undefined,'job');box.append(el('span',j.source+' · '+(j.application_status==='recorded_in_legacy_history'?'Already in previous history; submission not reverified':'Collected, not applied'),'tag'),el('h2',j.title),el('p',j.company||'Company not extracted'),el('p',j.location||'Location needs verification','muted'),link('View original listing',j.url));results.append(box)}
+ const checks=document.getElementById('checks');checks.replaceChildren();for(const c of state.checks){checks.append(el('p',c.source+' / '+c.term+' — '+c.status+': '+c.message+' · '+new Date(c.checked_at*1000).toLocaleString()))}
+}
+async function refresh(){try{state=await api('status');render()}catch(e){document.getElementById('error').textContent=e.message}}
+document.getElementById('scan').onsubmit=async e=>{e.preventDefault();document.getElementById('error').textContent='';try{await api('scan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({term:document.getElementById('term').value})});await refresh()}catch(e){document.getElementById('error').textContent=e.message}};
+document.getElementById('filter').onchange=render;document.getElementById('uae').onchange=render;
+api('status').then(s=>{state=s;for(const source of s.sources){const o=el('option',source.name);o.value=source.id;document.getElementById('filter').append(o)}render()}).catch(e=>document.getElementById('error').textContent=e.message);
+setInterval(refresh,5000);
+</script></html>
