@@ -7,6 +7,7 @@ import time
 import urllib.error
 import urllib.request
 from pathlib import Path
+from gpt_config import MODEL, FIT_CHECKS_VERSION
 
 BASE = 'http://hermes-jobs-gpt.hermes.svc.cluster.local:9120'
 DATA = Path(os.environ.get('JOB_DATA', '/data'))
@@ -31,7 +32,7 @@ def request(path, payload=None):
 
 def calibration_key():
     from worker_guard import profile_digest
-    return hashlib.sha256(('gpt-6.2-sol\nfit-checks-v1\n' + profile_digest()).encode()).hexdigest()
+    return hashlib.sha256((MODEL + '\nfit-checks-v' + FIT_CHECKS_VERSION + '\n' + profile_digest()).encode()).hexdigest()
 
 
 def validation_status():
@@ -62,7 +63,7 @@ def ensure_validated(retry=False):
     if not connection.get('connected'): return {'status': 'needs_auth', 'ready': False}
     old = validation_status()
     if old.get('ready'): return old
-    if old.get('status') == 'failed' and not retry: return old
+    if old.get('status') == 'failed' and old.get('profile_key') == calibration_key() and not retry: return old
     with (DATA / '.gpt-validation.lock').open('a') as lock:
         try: fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError: return {'status': 'checking', 'ready': False}
@@ -82,7 +83,7 @@ def ensure_validated(retry=False):
                 save()
             state['status'] = 'passed' if all(row['passed'] for row in state['results']) else 'failed'
             state['ready'] = state['status'] == 'passed'
-        except Exception:
-            state.update(status='failed', ready=False, error='GPT validation did not finish; automatic submission remains on hold.')
+        except Exception as error:
+            state.update(status='failed', ready=False, error=str(error)[:240] if isinstance(error, ValueError) else 'GPT validation did not finish; automatic submission remains on hold.')
         state['finished_at'] = int(time.time()); save()
         return state

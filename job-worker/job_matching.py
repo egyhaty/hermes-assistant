@@ -21,19 +21,50 @@ def professional_facts(config):
         value = str(config.get('personals', {}).get(key, '')).strip()
         if value:
             text = text.replace(value, '[contact omitted]')
+    aliases = {
+        'professional summary': 'Professional Summary',
+        'technical skills': 'Technical Skills',
+        'core hosting and infrastructure skills': 'Technical Skills',
+        'additional infrastructure skills': 'Technical Skills',
+        'devops project': 'DevOps Project',
+        'independent infrastructure projects': 'DevOps Project',
+        'professional experience': 'Professional Experience',
+        'professional experience continued': 'Professional Experience',
+        'earlier experience': 'Professional Experience',
+        'certification and education': 'Certification and Education',
+        'certifications': 'Certification and Education',
+        'education': 'Certification and Education',
+    }
+    # The document may change heading case, section order, or span two pages.
+    # Ignore the preamble entirely; only named professional sections are shared.
+    professional = re.split(r'Boundary:|Owner-confirmed', text, maxsplit=1, flags=re.I)[0]
+    heading = re.compile(r'^\s*(' + '|'.join(re.escape(x) for x in sorted(aliases, key=len, reverse=True)) + r')\s*$', re.I | re.M)
+    matches = list(heading.finditer(professional))
     sections = {}
-    for name, end in [('Professional Summary', 'DevOps Project'), ('Technical Skills', 'Professional Experience'), ('DevOps Project', 'Technical Skills'), ('Certification and Education', 'Boundary:')]:
-        if name in text:
-            piece = text.split(name, 1)[1].split(end, 1)[0].strip()
-            sections[name] = piece[:1600]
-    sections['Employment dates and titles'] = re.findall(r'.*(?:\|.*20\d\d|Senior Technical Support Engineer|Co Founder and Systems Engineering Lead).*', text)[:12]
-    if 'Boundary:' in text:
-        # Sharing consent covers professional skills, projects and education.
-        # Residency/work-permit answers belong to the private application profile.
-        limits = text.split('Boundary:', 1)[1].split('Owner-confirmed', 1)[0]
-        sections['Limits'] = '\n'.join(line for line in limits.splitlines() if not re.search(r'residenc|visa|work.permit|legally.authorized', line, re.I))[:700]
+    full_name = ' '.join(str(config.get('personals', {}).get(x, '')).strip() for x in ('first_name', 'last_name')).strip()
+    for index, match in enumerate(matches):
+        end = matches[index + 1].start() if index + 1 < len(matches) else len(professional)
+        lines = []
+        for line in professional[match.end():end].strip().splitlines():
+            if re.search(r'residenc|visa|work.permit|legally.authorized|\[.*(?:contact|email|phone) omitted\]', line, re.I):
+                # Redact contacts inline without dropping legitimate skills on that line.
+                if re.search(r'residenc|visa|work.permit|legally.authorized', line, re.I): continue
+                line = re.sub(r'\[.*?(?:contact|email|phone) omitted\]', '', line)
+            if line.strip().isdigit() or full_name and line.lower().startswith(full_name.lower()): continue
+            if line.strip(): lines.append(line.strip())
+        name = aliases[match[1].lower()]
+        piece = '\n'.join(lines)
+        if piece: sections[name] = (sections.get(name, '') + '\n' + piece).strip()
     if not sections:
         raise ValueError('Verified professional profile is missing')
+    if len(json.dumps(sections)) > 24000:
+        raise ValueError('Professional profile is too large to screen without truncating qualifications')
+    if re.search('Boundary:', text, re.I):
+        # Sharing consent covers professional skills, projects and education.
+        # Residency/work-permit answers belong to the private application profile.
+        limits = re.split('Boundary:', text, maxsplit=1, flags=re.I)[1]
+        limits = re.split('Owner-confirmed', limits, maxsplit=1, flags=re.I)[0]
+        sections['Limits'] = '\n'.join(line for line in limits.splitlines() if not re.search(r'residenc|visa|work.permit|legally.authorized', line, re.I))[:700]
     return sections
 
 
