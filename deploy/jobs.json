@@ -51,7 +51,7 @@
             "containers": [
               {
                 "name": "jobs",
-                "image": "ghcr.io/egyhaty/hermes-assistant-jobs@sha256:2ad84608e8634d403ddcef9c0fa5b1153478cd901086128ad3ff6abc41851596",
+                "image": "ghcr.io/egyhaty/hermes-assistant-jobs@sha256:9d7a8292dc5a26976215f27de03525bd77726200aac452b3f4bbe50656c02c35",
                 "env": [
                   {
                     "name": "JOB_RUN_SECONDS",
@@ -446,7 +446,7 @@
                 "containers": [
                   {
                     "name": "scheduler",
-                    "image": "ghcr.io/egyhaty/hermes-assistant-jobs@sha256:2ad84608e8634d403ddcef9c0fa5b1153478cd901086128ad3ff6abc41851596",
+                    "image": "ghcr.io/egyhaty/hermes-assistant-jobs@sha256:9d7a8292dc5a26976215f27de03525bd77726200aac452b3f4bbe50656c02c35",
                     "command": [
                       "python",
                       "/opt/worker/scheduler.py"
