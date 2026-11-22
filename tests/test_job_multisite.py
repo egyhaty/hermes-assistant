@@ -26,6 +26,18 @@ class ScopeAndBoundaryTests(unittest.TestCase):
             return True
         page.js = evaluate
         self.assertTrue(page.wait("document.querySelector('main')"))
+
+    def test_navigation_transition_is_retried_only_by_readiness_polling(self):
+        page = BrowserPage.__new__(BrowserPage)
+        calls = []
+        def evaluate(expression):
+            calls.append(expression)
+            if len(calls) == 1: raise RuntimeError('Inspected target navigated or closed')
+            return True
+        page.js = evaluate
+        with patch('cdp_browser.time.sleep'):
+            self.assertTrue(page.wait("document.querySelector('main')"))
+        self.assertEqual(len(calls), 2)
     def test_worldwide_hosting_and_uae_remote_are_within_scope(self):
         for location in ('Remote worldwide', 'Work remotely from the UAE'):
             self.assertIsNone(scope_error({'title': 'Linux Hosting Support Engineer', 'head': location}, 'hosting_remote'))

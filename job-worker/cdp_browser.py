@@ -63,7 +63,7 @@ class BrowserPage:
                 if self.js('!!(' + expression + ')'):
                     return True
             except RuntimeError as error:
-                if not any(word in str(error).lower() for word in ('context', 'page operation failed')):
+                if not any(word in str(error).lower() for word in ('context', 'page operation failed', 'navigated or closed')):
                     raise
             time.sleep(1)
         return False
