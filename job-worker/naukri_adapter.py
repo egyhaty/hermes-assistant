@@ -49,6 +49,9 @@ def submit(page, job, journal, digest):
                 # Reload the original listing to establish durable platform state.
                 check = inspect_job(page, url)
                 if already_applied(check):
+                    from application_proof import capture
+                    proof = capture(page, url)
+                    if proof: journal.attach_proof(url, proof)
                     journal.finish(url, 'confirmed', 'Success was acknowledged and Already Applied persisted on the original listing.', result['head'][:650] + '\n' + check['head'][:650])
                     return 'confirmed'
                 break

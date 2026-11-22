@@ -7,6 +7,7 @@ import os
 import re
 import sys
 import time
+import uuid
 from pathlib import Path
 
 from application_journal import Journal
@@ -53,6 +54,11 @@ def run(check=False, execute=False, terms=None):
     error = profile_ready_error()
     if error:
         raise RuntimeError(error)
+    if os.environ.get('JOB_SCREENING_MODE','local') == 'codex':
+        from gpt_gateway import readiness_error
+        error = readiness_error()
+        if error:
+            raise RuntimeError(error)
     config = json.loads((DATA / 'user_config.json').read_text())
     digest = hashlib.sha256((DATA / 'resume.pdf').read_bytes()).hexdigest()
     journal = Journal(DATA / 'job-applications.sqlite3')
@@ -62,17 +68,25 @@ def run(check=False, execute=False, terms=None):
     lock = open(DATA / '.application-adapter.lock', 'a')
     fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
     page = BrowserPage('www.naukrigulf.com')
+    state['run_id'] = os.environ.get('JOB_RUN_ID') or uuid.uuid4().hex
+    journal.start_run(state['run_id'], 'naukrigulf', os.environ.get('JOB_SCREENING_MODE', 'local'))
+    state_write(state)
     try:
         page.goto('https://www.naukrigulf.com/mnj/userProfile/myHome')
         page.wait("/Welcome Back|LOGIN|Sign In/i.test(document.body.innerText)", 20)
         if not page.js("document.body.innerText.includes('Welcome Back!')"):
             raise RuntimeError('Sign in to Naukrigulf in the private browser first')
         if check:
+            if os.environ.get('JOB_SCREENING_MODE','local') == 'openai':
+                from openai_screening import configuration_error
+                error = configuration_error()
+                if error:
+                    raise RuntimeError(error)
             state.update(ready=True, stop_reason='Signed-in browser and approved CV verified; no applications started.')
             return state
         if os.environ.get('JOB_SCREENING_MODE','local')=='groq' and (not os.environ.get('GROQ_API_KEY') or os.environ.get('JOB_AI_PROVIDER') != 'groq' or os.environ.get('JOB_SCREENING_SHARING_APPROVED')!='1'):
             raise RuntimeError('The configured free-plan screening provider is missing')
-        known = journal.known_urls()
+        known = journal.known_urls(os.environ.get('JOB_SCREENING_MODE', 'local'))
         seen = set()
         for term in terms or TERMS:
             # Finish collecting a query before navigating away to its listings.
@@ -99,17 +113,20 @@ def run(check=False, execute=False, terms=None):
                 if already_applied(job):
                     journal.review(job, digest, False, 'Already applied on the platform; no repeat submission')
                     state['skipped'] += 1
+                    state_write(state)
                     continue
                 if not job['easyApply']:
                     journal.review(job, digest, False, 'External or unsupported application flow; not submitted automatically')
                     state['skipped'] += 1
+                    state_write(state)
                     continue
                 if not is_uae(job['location']):
                     journal.review(job, digest, False, 'UAE job location could not be established')
                     state['skipped'] += 1
+                    state_write(state)
                     continue
                 decision = screen(config, {k: job[k] for k in ('title', 'company', 'head', 'description')})
-                job['screening'] = decision
+                job['screening'] = dict(decision, provider=os.environ.get('JOB_SCREENING_MODE', 'local'))
                 reason = decision['reason'] + (' Gaps: ' + '; '.join(decision['gaps']) if decision['gaps'] else '')
                 journal.review(job, digest, decision['eligible'], reason)
                 known.add(job['url'])
@@ -127,6 +144,11 @@ def run(check=False, execute=False, terms=None):
         state['stop_reason'] = 'Available search results reviewed; only confirmed submissions counted.' if execute else 'Review-only cycle completed; no applications sent.'
         return state
     finally:
+        error = sys.exc_info()[1]
+        attention = error and any(term in str(error).lower() for term in ('manual security', 'sign in to naukrigulf', 'connect chatgpt', 'gpt fit checks'))
+        journal.finish_run(state['run_id'], 'attention_required' if attention else 'failed' if error else 'completed',
+                           {key: state.get(key, 0) for key in ('confirmed', 'inspected', 'skipped', 'needs_input', 'uncertain')},
+                           str(error) if error else state.get('stop_reason', 'Cycle completed'))
         state.update(running=False, finished_at=int(time.time()))
         state_write(state)
         page.close()

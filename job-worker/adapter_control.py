@@ -5,6 +5,7 @@ import signal
 import subprocess
 import sys
 import time
+import uuid
 from pathlib import Path
 
 from application_journal import Journal
@@ -33,6 +34,16 @@ def status(app):
     data['applications'] = [{k: r[k] for k in ('source', 'job', 'status', 'reason', 'updated', 'attempts')} for r in rows[:100]]
     data['enabled'] = os.environ.get('JOB_APPLICATION_ENGINE') == 'naukrigulf'
     data['screening_mode'] = os.environ.get('JOB_SCREENING_MODE','local')
+    if data['screening_mode'] == 'codex':
+        from gpt_gateway import validation_status, request
+        try: connection = request('/status')
+        except ValueError: connection = {'connected': False, 'error': 'GPT connection unavailable'}
+        # Device sign-in codes belong only on the dedicated connection page.
+        data['gpt'] = {key: connection[key] for key in ('connected', 'model', 'error') if key in connection}
+        data['gpt']['validation'] = validation_status()
+        data['ready_to_apply'] = bool(connection.get('connected') and data['gpt']['validation'].get('ready'))
+    else:
+        data['ready_to_apply'] = data['enabled']
     return data
 
 
@@ -45,15 +56,26 @@ def start(app):
     error = profile_ready_error()
     if error:
         raise ValueError(error)
+    if os.environ.get('JOB_SCREENING_MODE','local') == 'codex':
+        from gpt_gateway import readiness_error
+        error = readiness_error()
+        if error:
+            raise ValueError(error)
+    if os.environ.get('JOB_SCREENING_MODE','local') == 'openai':
+        from openai_screening import configuration_error
+        error = configuration_error()
+        if error:
+            raise ValueError(error)
     if os.environ.get('JOB_SCREENING_MODE','local')=='groq' and (not os.environ.get('GROQ_API_KEY') or os.environ.get('JOB_AI_PROVIDER') != 'groq' or os.environ.get('JOB_SCREENING_SHARING_APPROVED')!='1'):
         raise ValueError('The configured free-plan screening provider is missing')
-    old = DATA / 'adapter-run.log'
-    if old.exists() and old.stat().st_size > 10 * 1024 * 1024:
-        old.replace(old.with_suffix('.previous.log'))
-    with old.open('a') as log:
-        old.chmod(0o600)
+    run_id = uuid.uuid4().hex
+    folder = DATA / 'run-logs'; folder.mkdir(exist_ok=True, mode=0o700)
+    log_file = folder / (run_id + '.log')
+    with log_file.open('a') as log:
+        log_file.chmod(0o600)
+        env = dict(os.environ, JOB_RUN_ID=run_id)
         proc = subprocess.Popen([sys.executable, str(Path(__file__).with_name('naukri_worker.py')), '--execute'],
-                                cwd=str(DATA), stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
+                                cwd=str(DATA), env=env, stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
     app['adapter_proc'] = proc
     return {'running': True, 'pid': proc.pid, 'engine': 'naukrigulf'}
 
@@ -72,6 +94,8 @@ def stop(app):
         except (OSError, ValueError):
             data = {}
         data.update(running=False, cancelled=True, finished_at=int(time.time()), stop_reason='Stopped by owner. Interrupted submissions require verification.')
+        if data.get('run_id'):
+            Journal(DATA / 'job-applications.sqlite3').finish_run(data['run_id'], 'cancelled', {key: data.get(key, 0) for key in ('confirmed', 'inspected', 'skipped', 'needs_input', 'uncertain')}, data['stop_reason'])
         STATE.write_text(json.dumps(data))
         STATE.chmod(0o600)
     return status(app)

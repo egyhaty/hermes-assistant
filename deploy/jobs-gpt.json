@@ -1,0 +1,324 @@
+{
+  "apiVersion": "v1",
+  "kind": "List",
+  "items": [
+    {
+      "apiVersion": "apps/v1",
+      "kind": "Deployment",
+      "metadata": {
+        "name": "hermes-jobs-gpt",
+        "namespace": "hermes"
+      },
+      "spec": {
+        "replicas": 0,
+        "strategy": {
+          "type": "Recreate"
+        },
+        "selector": {
+          "matchLabels": {
+            "app.kubernetes.io/name": "hermes-jobs-gpt"
+          }
+        },
+        "template": {
+          "metadata": {
+            "labels": {
+              "app.kubernetes.io/name": "hermes-jobs-gpt"
+            }
+          },
+          "spec": {
+            "nodeSelector": {
+              "kubernetes.io/hostname": "devops"
+            },
+            "automountServiceAccountToken": false,
+            "imagePullSecrets": [
+              {
+                "name": "hermes-registry"
+              }
+            ],
+            "securityContext": {
+              "runAsNonRoot": true,
+              "runAsUser": 10000,
+              "runAsGroup": 10000,
+              "fsGroup": 10000,
+              "fsGroupChangePolicy": "OnRootMismatch",
+              "seccompProfile": {
+                "type": "RuntimeDefault"
+              }
+            },
+            "initContainers": [
+              {
+                "name": "prepare-gpt-home",
+                "image": "ghcr.io/egyhaty/hermes-assistant-jobs@sha256:e7808377762bf4fa31719762b8e946a00ffacd38c5cd49d4ce02afbde7f14ac5",
+                "command": [
+                  "python",
+                  "-c",
+                  "from pathlib import Path; import os; p=Path('/parent/job-gpt'); assert not p.is_symlink(); p.mkdir(mode=0o700,exist_ok=True); assert p.stat().st_uid==os.getuid(); p.chmod(0o700)"
+                ],
+                "securityContext": {
+                  "readOnlyRootFilesystem": true,
+                  "allowPrivilegeEscalation": false,
+                  "capabilities": {
+                    "drop": [
+                      "ALL"
+                    ]
+                  }
+                },
+                "volumeMounts": [
+                  {
+                    "name": "data",
+                    "mountPath": "/parent",
+                    "subPath": "hermes-home"
+                  }
+                ]
+              }
+            ],
+            "containers": [
+              {
+                "name": "gpt",
+                "image": "ghcr.io/egyhaty/hermes-assistant-jobs@sha256:e7808377762bf4fa31719762b8e946a00ffacd38c5cd49d4ce02afbde7f14ac5",
+                "command": [
+                  "python",
+                  "/opt/worker/gpt_matcher.py"
+                ],
+                "env": [
+                  {
+                    "name": "GPT_AUTH_DIR",
+                    "value": "/data/codex"
+                  },
+                  {
+                    "name": "GPT_MATCHER_TOKEN",
+                    "valueFrom": {
+                      "secretKeyRef": {
+                        "name": "hermes-jobs-matcher-auth",
+                        "key": "GPT_MATCHER_TOKEN"
+                      }
+                    }
+                  }
+                ],
+                "ports": [
+                  {
+                    "name": "http",
+                    "containerPort": 9120
+                  }
+                ],
+                "securityContext": {
+                  "readOnlyRootFilesystem": true,
+                  "allowPrivilegeEscalation": false,
+                  "capabilities": {
+                    "drop": [
+                      "ALL"
+                    ]
+                  }
+                },
+                "resources": {
+                  "requests": {
+                    "cpu": "100m",
+                    "memory": "128Mi"
+                  },
+                  "limits": {
+                    "cpu": "1",
+                    "memory": "768Mi"
+                  }
+                },
+                "startupProbe": {
+                  "httpGet": {
+                    "path": "/health",
+                    "port": 9120
+                  },
+                  "periodSeconds": 5,
+                  "failureThreshold": 24
+                },
+                "readinessProbe": {
+                  "httpGet": {
+                    "path": "/health",
+                    "port": 9120
+                  },
+                  "periodSeconds": 10
+                },
+                "livenessProbe": {
+                  "httpGet": {
+                    "path": "/health",
+                    "port": 9120
+                  },
+                  "periodSeconds": 15
+                },
+                "volumeMounts": [
+                  {
+                    "name": "data",
+                    "mountPath": "/data",
+                    "subPath": "hermes-home/job-gpt"
+                  },
+                  {
+                    "name": "tmp",
+                    "mountPath": "/tmp"
+                  }
+                ]
+              }
+            ],
+            "volumes": [
+              {
+                "name": "data",
+                "persistentVolumeClaim": {
+                  "claimName": "hermes-data"
+                }
+              },
+              {
+                "name": "tmp",
+                "emptyDir": {
+                  "sizeLimit": "256Mi"
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Service",
+      "metadata": {
+        "name": "hermes-jobs-gpt",
+        "namespace": "hermes"
+      },
+      "spec": {
+        "selector": {
+          "app.kubernetes.io/name": "hermes-jobs-gpt"
+        },
+        "ports": [
+          {
+            "name": "http",
+            "port": 9120,
+            "targetPort": 9120
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "networking.k8s.io/v1",
+      "kind": "NetworkPolicy",
+      "metadata": {
+        "name": "hermes-jobs-gpt",
+        "namespace": "hermes"
+      },
+      "spec": {
+        "podSelector": {
+          "matchLabels": {
+            "app.kubernetes.io/name": "hermes-jobs-gpt"
+          }
+        },
+        "policyTypes": [
+          "Ingress",
+          "Egress"
+        ],
+        "ingress": [
+          {
+            "from": [
+              {
+                "podSelector": {
+                  "matchLabels": {
+                    "app.kubernetes.io/name": "hermes-jobs"
+                  }
+                }
+              }
+            ],
+            "ports": [
+              {
+                "protocol": "TCP",
+                "port": 9120
+              }
+            ]
+          }
+        ],
+        "egress": [
+          {
+            "to": [
+              {
+                "namespaceSelector": {
+                  "matchLabels": {
+                    "kubernetes.io/metadata.name": "kube-system"
+                  }
+                },
+                "podSelector": {
+                  "matchLabels": {
+                    "k8s-app": "kube-dns"
+                  }
+                }
+              }
+            ],
+            "ports": [
+              {
+                "protocol": "UDP",
+                "port": 53
+              },
+              {
+                "protocol": "TCP",
+                "port": 53
+              }
+            ]
+          },
+          {
+            "to": [
+              {
+                "ipBlock": {
+                  "cidr": "0.0.0.0/0",
+                  "except": [
+                    "10.0.0.0/8",
+                    "172.16.0.0/12",
+                    "192.168.0.0/16",
+                    "169.254.0.0/16",
+                    "127.0.0.0/8",
+                    "66.11.126.176/28",
+                    "224.0.0.0/4"
+                  ]
+                }
+              }
+            ],
+            "ports": [
+              {
+                "protocol": "TCP",
+                "port": 443
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "networking.k8s.io/v1",
+      "kind": "NetworkPolicy",
+      "metadata": {
+        "name": "hermes-jobs-to-gpt",
+        "namespace": "hermes"
+      },
+      "spec": {
+        "podSelector": {
+          "matchLabels": {
+            "app.kubernetes.io/name": "hermes-jobs"
+          }
+        },
+        "policyTypes": [
+          "Egress"
+        ],
+        "egress": [
+          {
+            "to": [
+              {
+                "podSelector": {
+                  "matchLabels": {
+                    "app.kubernetes.io/name": "hermes-jobs-gpt"
+                  }
+                }
+              }
+            ],
+            "ports": [
+              {
+                "protocol": "TCP",
+                "port": 9120
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

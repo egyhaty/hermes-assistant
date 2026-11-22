@@ -16,7 +16,7 @@ def main():
  if args.check:
   print(json.dumps(result));return 0 if result.get('ready') or result.get('skipped') else 1
  if result.get('skipped'):
-  print('Skipped: an existing application run is active.');return 0
+  print('Skipped: '+str(result.get('reason') or 'an existing application run is active.'));return 0
  if not result.get('running') or not result.get('pid'):raise RuntimeError('Worker did not acknowledge a started run.')
  pid=result['pid'];print('Scheduled application cycle started; holding Job until completion.',flush=True)
  failures=0
