@@ -36,6 +36,9 @@ def render(image):
     'env':[{'name':'CONTROL_TOKEN','valueFrom':{'secretKeyRef':{'name':'hermes-jobs-control','key':'CONTROL_TOKEN'}}}],
     'securityContext':{'readOnlyRootFilesystem':True,'allowPrivilegeEscalation':False,'capabilities':{'drop':['ALL']}},
     'resources':{'requests':{'cpu':'10m','memory':'32Mi'},'limits':{'cpu':'100m','memory':'128Mi'}}}]}}}}}})
+ pod['volumes'].append({'name':'chromium-startup','configMap':{'name':'hermes-jobs-chromium-startup','defaultMode':292}})
+ pod['containers'][0]['volumeMounts'].append({'name':'chromium-startup','mountPath':'/etc/chromium.d/99-hermes-session','subPath':'99-hermes-session','readOnly':True})
+ objects.append({'apiVersion':'v1','kind':'ConfigMap','metadata':meta('hermes-jobs-chromium-startup'),'data':{'99-hermes-session':'CHROMIUM_FLAGS="$CHROMIUM_FLAGS --restore-last-session"\n'}})
  objects.append({'apiVersion':'networking.k8s.io/v1','kind':'NetworkPolicy','metadata':meta('hermes-jobs-scheduler'),'spec':{
   'podSelector':{'matchLabels':scheduler_labels},'policyTypes':['Ingress','Egress'],'ingress':[],
   'egress':[{'to':[{'podSelector':{'matchLabels':labels}}],'ports':[{'protocol':'TCP','port':9118}]},

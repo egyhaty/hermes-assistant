@@ -177,6 +177,12 @@
                     "name": "profile",
                     "mountPath": "/etc/job-profile",
                     "readOnly": true
+                  },
+                  {
+                    "name": "chromium-startup",
+                    "mountPath": "/etc/chromium.d/99-hermes-session",
+                    "subPath": "99-hermes-session",
+                    "readOnly": true
                   }
                 ]
               }
@@ -207,6 +213,13 @@
                 "emptyDir": {
                   "medium": "Memory",
                   "sizeLimit": "256Mi"
+                }
+              },
+              {
+                "name": "chromium-startup",
+                "configMap": {
+                  "name": "hermes-jobs-chromium-startup",
+                  "defaultMode": 292
                 }
               }
             ]
@@ -552,6 +565,17 @@
             ]
           }
         ]
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "ConfigMap",
+      "metadata": {
+        "name": "hermes-jobs-chromium-startup",
+        "namespace": "hermes"
+      },
+      "data": {
+        "99-hermes-session": "CHROMIUM_FLAGS=\"$CHROMIUM_FLAGS --restore-last-session\"\n"
       }
     }
   ]
