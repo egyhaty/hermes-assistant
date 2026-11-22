@@ -41,7 +41,7 @@ class Matcher:
     def connected(self, force=False):
         if force or time.monotonic() - self._checked > 20:
             try:
-                result = subprocess.run([self.binary, 'login', 'status'], env=self.env(), capture_output=True, text=True, timeout=10)
+                result = subprocess.run([self.binary, '--config', 'cli_auth_credentials_store="file"', 'login', 'status'], env=self.env(), capture_output=True, text=True, timeout=10)
                 self._connected = result.returncode == 0 and 'chatgpt' in (result.stdout + result.stderr).lower()
             except (OSError, subprocess.TimeoutExpired):
                 self._connected = False
@@ -65,7 +65,7 @@ class Matcher:
             if self.connected(force=True) or self.proc and self.proc.poll() is None:
                 return self.status()
             self.login = {'expires_at': int(time.time()) + 900}
-            self.proc = subprocess.Popen([self.binary, 'login', '--device-auth'], env=self.env(),
+            self.proc = subprocess.Popen([self.binary, '--config', 'cli_auth_credentials_store="file"', 'login', '--device-auth'], env=self.env(),
                                          stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
                                          bufsize=1, start_new_session=True)
             threading.Thread(target=self._read_login, args=(self.proc,), daemon=True).start()
@@ -94,6 +94,7 @@ class Matcher:
         return [self.binary, '--ask-for-approval', 'never', 'exec', '--ignore-user-config', '--strict-config',
                 '--sandbox', 'read-only', '--skip-git-repo-check', '--ephemeral', '--color', 'never', '--json',
                 '--model', MODEL, '--config', 'model_reasoning_effort="low"',
+                '--config', 'cli_auth_credentials_store="file"',
                 '--config', 'web_search="disabled"', '--config', 'features.shell_tool=false',
                 '--config', 'features.shell_snapshot=false', '--config', 'features.multi_agent=false',
                 '--config', 'agents.enabled=false', '--config', 'apps._default.enabled=false',
@@ -129,7 +130,7 @@ class Matcher:
                     try: event = json.loads(line)
                     except ValueError: continue
                     kind = str(event.get('item', {}).get('type', ''))
-                    if any(word in kind for word in ('command_execution', 'mcp_tool_call', 'web_search', 'file_change')):
+                    if kind and kind not in ('agent_message', 'reasoning'):
                         raise ValueError('GPT used an unexpected tool; screening was held for review')
                 decision = parse_decision((folder / 'decision.json').read_text())
                 return decision
