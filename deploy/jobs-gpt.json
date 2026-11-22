@@ -48,7 +48,7 @@
             "initContainers": [
               {
                 "name": "prepare-gpt-home",
-                "image": "ghcr.io/egyhaty/hermes-assistant-jobs@sha256:e7808377762bf4fa31719762b8e946a00ffacd38c5cd49d4ce02afbde7f14ac5",
+                "image": "ghcr.io/egyhaty/hermes-assistant-jobs@sha256:b7d84e7a3a1c5bcd27cb2637eecdf82e1c14e5759ba370a06f83536156eadbc1",
                 "command": [
                   "python",
                   "-c",
@@ -75,7 +75,7 @@
             "containers": [
               {
                 "name": "gpt",
-                "image": "ghcr.io/egyhaty/hermes-assistant-jobs@sha256:e7808377762bf4fa31719762b8e946a00ffacd38c5cd49d4ce02afbde7f14ac5",
+                "image": "ghcr.io/egyhaty/hermes-assistant-jobs@sha256:b7d84e7a3a1c5bcd27cb2637eecdf82e1c14e5759ba370a06f83536156eadbc1",
                 "command": [
                   "python",
                   "/opt/worker/gpt_matcher.py"
