@@ -142,7 +142,7 @@ def screen(config, job):
     mode = os.environ.get('JOB_SCREENING_MODE', 'local')
     if mode == 'local':
         return local_screen(config, job)
-    if mode not in ('groq', 'openai'):
+    if mode not in ('groq', 'openai', 'codex'):
         raise ValueError('Unsupported job screening mode')
     job = dict(job)
     if 'head' in job:
@@ -152,10 +152,15 @@ def screen(config, job):
         job['head'] = job['head'][job['head'].find(title):].split('Job Description', 1)[0] if title and title in job['head'] else ''
     job = {key: job.get(key, '') for key in ('title', 'company', 'head', 'description')}
     prompt = json.dumps({'applicant': professional_facts(config), 'job': job}, ensure_ascii=False)
-    if mode == 'openai':
-        from openai_screening import OpenAIScreening
+    if mode in ('openai', 'codex'):
         if len(prompt) > 48000:
             return {'eligible': False, 'reason': 'Full requirements exceed the screening input limit; manual review needed.', 'required_unknown': ['Full job requirements need review'], 'gaps': []}
+        if mode == 'codex':
+            if os.environ.get('JOB_SCREENING_SHARING_APPROVED') != '1':
+                raise ValueError('Professional-summary sharing with GPT has not been approved')
+            from gpt_gateway import request
+            return parse_decision(json.dumps(request('/match', {'prompt': prompt})))
+        from openai_screening import OpenAIScreening
         return parse_decision(OpenAIScreening().invoke(SYSTEM, prompt))
     # The existing pacing budget reserves 1,024 output tokens. Include the
     # fixed system message in its estimate, and do not truncate requirements.

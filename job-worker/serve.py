@@ -91,7 +91,8 @@ async def auth(request,handler):
   if request.headers.get('Upgrade','').lower()=='websocket' and request.headers.get('Origin')!=PUBLIC:raise web.HTTPForbidden()
   if not has_session(request):
    if request.path=='/jobs/panel/api/run':print('Jobs Start rejected: missing or expired web session',flush=True)
-   if request.method=='GET' and '/api/' not in request.path and request.headers.get('Upgrade','').lower()!='websocket':raise web.HTTPSeeOther('/jobs/login')
+   json_path=request.path.startswith(('/jobs/discovery/','/jobs/applications/')) or request.path in ('/jobs/gpt/status','/jobs/reports/summary')
+   if request.method=='GET' and '/api/' not in request.path and not json_path and request.headers.get('Upgrade','').lower()!='websocket':raise web.HTTPSeeOther('/jobs/login')
    raise web.HTTPUnauthorized()
  if request.method=='POST' and request.path in ('/control/start','/control/scheduled-start','/control/schedule-check','/jobs/panel/api/run','/jobs/discovery/open-site','/jobs/applications/start','/jobs/applications/stop'):
   if failed_children(PROCS):raise web.HTTPServiceUnavailable(text='Worker services unavailable; recovery pending')
@@ -99,7 +100,13 @@ async def auth(request,handler):
  return await handler(request)
 
 async def handle(request):
+ if request.path.startswith('/jobs/gpt'):
+  return await gpt_handle(request)
+ if request.path.startswith('/jobs/reports/') or request.path.startswith('/jobs/proof/'):
+  return await reports_handle(request)
  runner=request.app.get('adapter_proc')
+ if request.path=='/jobs/panel/api/run' and os.environ.get('JOB_SCREENING_MODE')=='codex':
+  return web.json_response({'error':'Use Run applications in the jobs workspace. The legacy model runner is disabled.'},status=409)
  if request.path=='/jobs/panel/api/run' and runner and runner.poll() is None:
   return web.json_response({'error':'An application cycle is already running. Stop it before using the legacy controls.'},status=409)
  if request.path.startswith('/jobs/applications/'):
@@ -203,18 +210,91 @@ async def application_handle(request,action=None):
  if request.method!=expected:raise web.HTTPMethodNotAllowed(request.method,[expected])
  if action=='status':return web.json_response(await asyncio.to_thread(adapter_status,request.app),headers={'Cache-Control':'no-store'})
  if action=='log':
-  p=Path('/data/adapter-run.log')
+  try:run=json.loads(Path('/data/.adapter-run-state.json').read_text()).get('run_id','')
+  except (OSError,ValueError):run=''
+  import re
+  p=Path('/data/run-logs')/(run+'.log') if re.fullmatch(r'[0-9a-f]{32}',run) else Path('/data/adapter-run.log')
   return web.json_response({'text':p.read_text(errors='replace')[-8000:] if p.exists() else ''},headers={'Cache-Control':'no-store'})
  try:
   if action=='stop':return web.json_response(await asyncio.to_thread(stop_adapter,request.app))
   async with request.app['client'].get('http://127.0.0.1:5000/api/status',timeout=10) as response:legacy=await response.json()
   if legacy.get('running'):return web.json_response({'error':'A legacy application run is active; browser left untouched.'},status=409)
+  if request.path=='/control/scheduled-start' and os.environ.get('JOB_SCREENING_MODE')=='codex':
+   from gpt_gateway import readiness_error
+   pending=await asyncio.to_thread(readiness_error)
+   if pending:return web.json_response({'skipped':True,'running':False,'reason':pending})
   if action=='check':
    runner=request.app.get('adapter_proc')
    if runner and runner.poll() is None:return web.json_response({'ready':True,'started':False,'skipped':True})
    return web.json_response(await asyncio.to_thread(check_adapter))
   return web.json_response(await asyncio.to_thread(start_adapter,request.app))
  except ValueError as error:return web.json_response({'error':str(error)},status=409)
+
+async def gpt_handle(request):
+ from gpt_gateway import request as call,validation_status,ensure_validated
+ path=request.path.rstrip('/')
+ if path=='/jobs/gpt':
+  if request.method!='GET':raise web.HTTPMethodNotAllowed(request.method,['GET'])
+  return web.FileResponse(Path(__file__).with_name('gpt-connect.html'))
+ if path not in ('/jobs/gpt/status','/jobs/gpt/connect','/jobs/gpt/validate'):raise web.HTTPNotFound()
+ expected='GET' if path.endswith('/status') else 'POST'
+ if request.method!=expected:raise web.HTTPMethodNotAllowed(request.method,[expected])
+ try:
+  if path.endswith('/validate'):
+   return web.json_response(await asyncio.to_thread(ensure_validated,True),headers={'Cache-Control':'no-store'})
+  result=await asyncio.to_thread(call,'/connect',{}) if path.endswith('/connect') else await asyncio.to_thread(call,'/status')
+  result['validation']=await asyncio.to_thread(validation_status)
+  return web.json_response(result,headers={'Cache-Control':'no-store'})
+ except ValueError as error:return web.json_response({'error':str(error)},status=503)
+
+async def reports_handle(request):
+ if request.method!='GET':raise web.HTTPMethodNotAllowed(request.method,['GET'])
+ from application_journal import Journal
+ from job_reports import summary,applications_csv,runs_csv
+ import re
+ if request.path.startswith('/jobs/proof/'):
+  name=request.path.removeprefix('/jobs/proof/')
+  if not re.fullmatch(r'[a-z0-9-]+\.png',name):raise web.HTTPNotFound()
+  p=Path('/data/application-evidence')/name
+  if not p.is_file() or p.is_symlink():raise web.HTTPNotFound()
+  return web.FileResponse(p,headers={'Cache-Control':'no-store'})
+ if request.path in ('/jobs/reports/','/jobs/reports'):
+  return web.FileResponse(Path(__file__).with_name('job-reports.html'))
+ journal=Journal('/data/job-applications.sqlite3')
+ if request.path=='/jobs/reports/summary':
+  return web.json_response(await asyncio.to_thread(summary,journal),headers={'Cache-Control':'no-store'})
+ if request.path in ('/jobs/reports/applications.csv','/jobs/reports/runs.csv'):
+  text=await asyncio.to_thread(applications_csv if request.path.endswith('applications.csv') else runs_csv,journal)
+  name=request.path.rsplit('/',1)[1]
+  return web.Response(text=text,content_type='text/csv',headers={'Content-Disposition':'attachment; filename="hermes-'+name+'"','Cache-Control':'no-store'})
+ if request.path=='/jobs/reports/log':
+  run=request.query.get('run','')
+  if not re.fullmatch(r'[0-9a-f]{32}',run):raise web.HTTPNotFound()
+  p=Path('/data/run-logs')/(run+'.log')
+  if not p.is_file() or p.is_symlink():raise web.HTTPNotFound()
+  return web.FileResponse(p,headers={'Content-Disposition':'attachment; filename="hermes-run-'+run+'.log"','Cache-Control':'no-store'})
+ raise web.HTTPNotFound()
+
+async def watch_gpt(app):
+ from gpt_gateway import ensure_validated,calibration_key
+ from adapter_control import start as start_adapter
+ while True:
+  try:
+   validation=await asyncio.to_thread(ensure_validated)
+   marker=Path('/data/.gpt-initial-cycle')
+   key=calibration_key()
+   previous=marker.read_text() if marker.exists() else ''
+   if validation.get('ready') and previous!=key:
+    async with app['start_lock']:
+     async with app['client'].get('http://127.0.0.1:5000/api/status',timeout=10) as response:legacy=await response.json()
+     if not legacy.get('running'):
+      await asyncio.to_thread(start_adapter,app)
+      marker.write_text(key);marker.chmod(0o600)
+  except asyncio.CancelledError:raise
+  except Exception:
+   # Connection/setup state is visible in the dashboard. No model fallback or retry loop.
+   pass
+  await asyncio.sleep(30)
 
 async def collect_sources(app,term):
  for source in SOURCES:
@@ -259,12 +339,19 @@ async def discovery_handle(request):
  raise web.HTTPNotFound()
 
 async def start(app):
+ from application_journal import Journal
+ await asyncio.to_thread(Journal('/data/job-applications.sqlite3').recover_interrupted_runs)
  app['adapter_proc']=None
  app['discovery_store']=Store(Path('/data/job-discovery.sqlite3'))
  app['discovery_task']=None;app['discovery_term']='DevOps Engineer'
  app['client']=ClientSession();app['start_lock']=asyncio.Lock()
  app['process_monitor']=asyncio.create_task(watch_children())
+ if os.environ.get('JOB_SCREENING_MODE')=='codex':app['gpt_monitor']=asyncio.create_task(watch_gpt(app))
 async def cleanup(app):
+ if app.get('gpt_monitor'):
+  app['gpt_monitor'].cancel()
+  try:await app['gpt_monitor']
+  except asyncio.CancelledError:pass
  from adapter_control import stop as stop_adapter
  await asyncio.to_thread(stop_adapter,app)
  task=app.get('discovery_task')

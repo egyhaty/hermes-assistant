@@ -67,11 +67,11 @@
                   },
                   {
                     "name": "JOB_SCREENING_MODE",
-                    "value": "local"
+                    "value": "codex"
                   },
                   {
                     "name": "JOB_SCREENING_SHARING_APPROVED",
-                    "value": "0"
+                    "value": "1"
                   }
                 ],
                 "envFrom": [
@@ -94,6 +94,12 @@
                   {
                     "secretRef": {
                       "name": "hermes-jobs-openai",
+                      "optional": true
+                    }
+                  },
+                  {
+                    "secretRef": {
+                      "name": "hermes-jobs-matcher-auth",
                       "optional": true
                     }
                   }
@@ -404,8 +410,8 @@
         "namespace": "hermes"
       },
       "spec": {
-        "schedule": "0 */6 * * *",
-        "timeZone": "Africa/Cairo",
+        "schedule": "0 2,8,14,20 * * *",
+        "timeZone": "Asia/Dubai",
         "concurrencyPolicy": "Forbid",
         "startingDeadlineSeconds": 300,
         "successfulJobsHistoryLimit": 3,

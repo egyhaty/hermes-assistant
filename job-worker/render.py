@@ -8,7 +8,7 @@ def render(image):
  pod={'hostname':'hermes-jobs','nodeSelector':{'kubernetes.io/hostname':'devops'},'automountServiceAccountToken':False,'terminationGracePeriodSeconds':30,
  'imagePullSecrets':[{'name':'hermes-registry'}],
  'securityContext':{'runAsNonRoot':True,'runAsUser':10000,'runAsGroup':10000,'fsGroup':10000,'fsGroupChangePolicy':'OnRootMismatch','seccompProfile':{'type':'Localhost','localhostProfile':'hermes-jobs-browser.json'}},
- 'containers':[{'name':'jobs','image':image,'env':[{'name':'JOB_RUN_SECONDS','value':'0'},{'name':'JOB_FINISH_SEARCH','value':'1'}],'envFrom':[{'secretRef':{'name':'hermes-jobs-auth'}},{'secretRef':{'name':'hermes-free-api'}},{'secretRef':{'name':'hermes-jobs-groq','optional':True}},{'secretRef':{'name':'hermes-jobs-openai','optional':True}}],
+ 'containers':[{'name':'jobs','image':image,'env':[{'name':'JOB_RUN_SECONDS','value':'0'},{'name':'JOB_FINISH_SEARCH','value':'1'}],'envFrom':[{'secretRef':{'name':'hermes-jobs-auth'}},{'secretRef':{'name':'hermes-free-api'}},{'secretRef':{'name':'hermes-jobs-groq','optional':True}},{'secretRef':{'name':'hermes-jobs-openai','optional':True}},{'secretRef':{'name':'hermes-jobs-matcher-auth','optional':True}}],
  'securityContext':{'readOnlyRootFilesystem':True,'allowPrivilegeEscalation':False,'capabilities':{'drop':['ALL']},'appArmorProfile':{'type':'Localhost','localhostProfile':'hermes-jobs-browser'}},
  'ports':[{'name':'http','containerPort':9118}],
  'resources':{'requests':{'cpu':'250m','memory':'512Mi'},'limits':{'cpu':'1','memory':'2Gi'}},
@@ -27,7 +27,7 @@ def render(image):
  objects.append({'apiVersion':'traefik.io/v1alpha1','kind':'Middleware','metadata':meta('hermes-jobs-security'),'spec':{'headers':{'contentTypeNosniff':True,'referrerPolicy':'same-origin','stsSeconds':15552000}}})
  scheduler_labels={'app.kubernetes.io/name':'hermes-jobs-scheduler'}
  objects.append({'apiVersion':'batch/v1','kind':'CronJob','metadata':meta('hermes-jobs-schedule'),'spec':{
-  'schedule':'0 */6 * * *','timeZone':'Africa/Cairo','concurrencyPolicy':'Forbid','startingDeadlineSeconds':300,
+  'schedule':'0 2,8,14,20 * * *','timeZone':'Asia/Dubai','concurrencyPolicy':'Forbid','startingDeadlineSeconds':300,
   'successfulJobsHistoryLimit':3,'failedJobsHistoryLimit':3,'suspend':True,
   'jobTemplate':{'spec':{'backoffLimit':0,'ttlSecondsAfterFinished':86400,'template':{'metadata':{'labels':scheduler_labels},'spec':{
    'restartPolicy':'Never','automountServiceAccountToken':False,'imagePullSecrets':[{'name':'hermes-registry'}],

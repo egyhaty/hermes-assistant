@@ -1,123 +1,41 @@
-# Authenticated application cycle
+# Self-hosted job search and applications
 
-The first validated automatic submission path is **NaukriGulf Easy Apply**.
-LinkedIn, Indeed, Bayt and GulfTalent account access and CV updates are separate
-from application-adapter readiness. Do not label those adapters as enabled.
+The jobs workspace, persistent Chromium sessions, application queue, evidence and reports run on the owner's Kubernetes servers. GPT matching uses the official Codex client on a separate private worker, signed in with the owner's ChatGPT account. Model inference uses OpenAI; no GPU is required on these servers. The Mac and this chat do not need to stay open for the server schedule.
 
-## Controls
+## Connect and start
 
-`JOB_APPLICATION_ENGINE=naukrigulf` routes the existing authenticated control
-start/status/stop/check operations to the new cycle. The existing owner-approved
-CronJob keeps its four daily runs and holds the Kubernetes Job until the tracked
-cycle stops. Its timezone and schedule are unchanged. The dashboard also has
-authenticated POST start/stop controls and a combined activity view.
+Open `/jobs/gpt/` from the authenticated jobs workspace. Start sign-in, open the official `https://auth.openai.com/codex/device` page and complete the device-code flow yourself. Access and refresh credentials remain only in the matcher's separate persistent directory. They are never copied to the browser worker or sent in dashboard responses.
 
-Only one cycle can own `/data/.application-adapter.lock`. Starts are rejected
-while the legacy process is active; the legacy Start and board-switch controls
-are refused while the new cycle is running. Chromium is managed independently
-and is not terminated by Stop cycle.
+After sign-in, six synthetic fit checks run automatically against the approved professional profile. They cover a core Linux role, supervised basic cloud support, unsupported AI/backend requirements, mandatory production cloud tenure, Emirati-only jobs and conflicting countries. No applications are submitted by validation. All six must pass before the first application cycle starts automatically. A failed check holds submissions and exposes the result for review; it does not select another model/provider.
 
-## Screening and applicant facts
+The live server schedule has four Dubai slots: **02:00, 08:00, 14:00 and 20:00 Asia/Dubai**. Kubernetes forbids overlapping scheduled runs. Manual and scheduled starts share the same control lock and persistent application journal. A disconnected GPT account or unfinished validation skips a scheduled submission cycle with a visible reason.
 
-The default `JOB_SCREENING_MODE=local` sends no applicant facts to an AI service.
-Conservative rules check the approved professional profile, Linux/operations
-fit, location, nationality restrictions, specialised-platform gaps and cloud
-experience limits. They do not manufacture skill tenure or production cloud
-experience from labs. Unsupported or ambiguous roles can be held for review;
-this mode does not provide semantic coverage of every possible requirement.
+The currently validated automatic submission adapter is **NaukriGulf Easy Apply**. LinkedIn, Indeed, Bayt and GulfTalent account connections and discovery are distinct from submission-adapter readiness. Do not represent those four as enabled automatic submission paths.
 
-Optional Groq screening requires both `JOB_SCREENING_MODE=groq` and explicit
-owner authorization recorded as `JOB_SCREENING_SHARING_APPROVED=1`. Without it,
-external screening is refused. It uses only the configured free-plan model,
-existing pacing and bounded rate-limit handling. Professional facts omit phone
-numbers and email; the board's signed-in account header is omitted. Full job
-requirements are never silently truncated to fit the token budget.
+## GPT boundary
 
-## OpenAI screening
+`JOB_SCREENING_MODE=codex` selects the private matcher. `JOB_SCREENING_SHARING_APPROVED=1` records the owner's authorization to send the professional summary, skills, projects, employment titles/dates and education. Phone/email, residency and work-permit answers are excluded. The PDF, browser cookies and application screenshots are not sent for matching.
 
-The owner selected OpenAI and permits paid usage rather than requiring a free
-provider. `JOB_SCREENING_MODE=openai` uses `gpt-6.2-sol`, low reasoning effort,
-priority processing and a strict decision schema through the Responses API.
-This is a deliberate speed/quality configuration, not a benchmark claim.
-The request has no tools, no form-answer generation, no file attachment and
-`store=false`. Only the professional summary, skills, projects, employment
-titles/dates and education are sent alongside the listing. Contact information,
-residency and work-permit answers are excluded. Unknown mandatory requirements
-still block automatic submission.
+The matcher runs `gpt-6.2-sol` at low reasoning effort through a pinned official Codex binary. Its subprocess uses a separate authentication directory and does not inherit other server credentials. Command execution, web search, connected apps, MCP servers and multi-agent tools are disabled. The sandbox stays read-only; ephemeral runs return one schema-validated decision. Unexpected tool use, incomplete output, connection errors or unknown mandatory requirements hold the job without a submission. The browser worker keeps its existing sandbox and resource isolation.
 
-Activation requires a dedicated `OPENAI_API_KEY` in Secret/hermes-jobs-openai
-and `JOB_SCREENING_SHARING_APPROVED=1`. The optional Secret reference does not
-enable the provider. `JOB_AI_PROVIDER` remains the legacy worker setting; use
-`JOB_SCREENING_MODE` for this adapter. There is no silent fallback to Groq.
+Local matching and separately consent-gated API implementations remain available in code for explicit configuration. The server deployment selects Codex; there is no automatic fallback to Groq or rule-based submission. The legacy Start action is refused in this mode. Profile approval and CV identity are rechecked before submission.
 
-Provision through the connected OpenAI Developers setup or, in an owner terminal,
-run `python scripts/configure_jobs_openai.py`. The latter reads masked input,
-verifies the exact Kubernetes API and model access, and writes the Secret without
-printing its value. Never place keys in chat, shell arguments or Git.
+## Submission and recovery
 
-Before changing the live default, run the six bounded checks with an approved key:
+`/data/job-applications.sqlite3` records reviews, CV hashes, attempts, platform evidence and run outcomes. An atomic claim is written before the first Easy Apply click. A success message must agree with Already Applied on a fresh copy of the original listing. Screenshots of this persisted state stay under the worker's private evidence directory when capture succeeds. Text confirmation is retained even if image capture fails.
 
-```sh
-JOB_SCREENING_MODE=openai JOB_SCREENING_SHARING_APPROVED=1 \
-  python /opt/worker/calibrate_screening.py \
-  --out /data/application-evidence/openai-calibration.json
-```
+An uncertain/interrupted attempt is never retried automatically. Startup, after the exclusive worker lock, marks interrupted runs and attempts accordingly. A newly selected GPT matcher can reconsider an unattempted rules-based rejection; confirmed, uncertain and form-held attempts are never reopened by that process. Further forms receive no guessed answers or additional Submit click. MFA, CAPTCHA, new agreements and unknown salary/work-authorization answers are held for owner action.
 
-These are real API requests using the professional summary and synthetic job
-descriptions, with zero applications. They test a core Linux role, supervised
-basic cloud support, unsupported AI/backend requirements, production cloud
-tenure, nationality restrictions and conflicting countries. Require all six
-to pass. Offline tests alone must not be described as a live model evaluation.
-If the key or authorization is missing, leave local matching active.
+The early rules-based flow sent three confirmed applications. Two later audits found mandatory AI/backend or banking/payments experience not established in the CV. Those real submissions and audit warnings remain in the journal and reports. They must not be represented as verified matches or removed from counts. Rules-based automatic submission was paused before preparing GPT matching.
 
-Official references: [model selection](https://developers.openai.com/api/docs/guides/model-selection),
-[GPT-6.2 Sol](https://developers.openai.com/api/docs/models/gpt-6.2-sol),
-[structured outputs](https://developers.openai.com/api/docs/guides/structured-outputs).
+## Reports
 
-No application-question answers are generated by the adapter. A further form
-is held for review and gets no additional Submit click. MFA, CAPTCHA, changing
-terms, unknown authorization/salary answers and external application systems
-are not bypassed.
+`/jobs/reports/` provides Dubai-time daily outcomes and recent server runs. Authenticated application and run CSV exports, per-run operational logs and captured platform evidence are available there/in application activity. Discovery is never counted as a submission. Screening-audit warnings remain visible next to confirmed totals. Exported untrusted text is neutralized against spreadsheet formulas. Reports and model setup require the owner's jobs session; mutations also require the expected Origin.
 
-## Submission accounting
+## Deploy and verify
 
-`/data/job-applications.sqlite3` records reviews, CV hashes, attempts, platform
-confirmation and reasons. A transaction claims an eligible listing before the
-first Easy Apply click. An interrupted or uncertain attempt cannot be retried
-automatically. A success message is checked against the original listing's
-persisted Already Applied state before confirmation is recorded.
+`deploy/jobs-gpt.json` adds a private singleton matcher with a separate PVC subdirectory, restricted non-root containers, no Kubernetes service-account token, and ingress only from the jobs worker. The browser receives a separate internal matcher-control token, not ChatGPT credentials. No public matcher Ingress is created. Source manifests retain zero replicas/suspended install defaults; live activation is intentional and separate from a whole-foundation sync.
 
-An operator can reconcile an interrupted tracker only after independently
-checking platform evidence. Reconciliation sends nothing and preserves the
-attempt count. Older platform applications are skipped; they are not counted
-as new automated submissions.
+The jobs image copies the official native Codex 0.164.0 binary from the existing pinned Hermes image. The image build checks the binary, compiles source, runs the job tests and scans for fixable HIGH/CRITICAL vulnerabilities. Offline tests verify auth gates, data minimization, duplicate protection, recovery and truthful reporting. They do not establish that the owner's real GPT connection or fit checks have succeeded: verify those after owner sign-in.
 
-The initial live flow produced one confirmed platform application. A tracker
-exception after the submit action was reconciled with the success page and a
-fresh listing check, without another click. Private evidence stays on the
-worker/user workspace, not in Git.
-
-A subsequent local-matching run confirmed a second application, but review of
-the stored requirements found unsupported backend/AI engineering requirements.
-The cycle was stopped and the screen was tightened before resuming. The record
-remains a real confirmed submission with its screening-audit note; it must not
-be portrayed as a verified match or removed from the application count. Regression
-checks cover AI/backend roles that also contain Linux/backup keywords and generic
-cloud experience that must not be inferred from labs.
-
-## Runtime
-
-`python /opt/worker/naukri_worker.py --check` checks the approved profile and
-signed-in browser without starting applications. Without `--execute`, the
-worker reviews roles only. With `--execute`, it runs the verified inline Easy
-Apply path for eligible new listings. It collects finite search pages, detects
-repeated page URLs, and keeps one status file and an operational log under
-`/data`. Manual security/login attention is surfaced as such; programming or
-unexpected runtime errors fail the cycle. No credentials or browser cookies
-are exported.
-
-## Verified release — 2026-11-22
-
-The corrected deployed image was built from `52687ff64209da28df656743e4f2eaa6035569e5`: 79 tests passed and the image scan found no fixable HIGH/CRITICAL vulnerabilities. The installed readiness check verified the approved CV and signed-in NaukriGulf session. Local screening is explicitly selected; external professional-profile sharing is disabled.
-
-`deploy/jobs.json` intentionally retains the installation defaults (zero replicas and a suspended schedule). The owner-approved live worker is activated separately, with the existing four daily slots retained. Do not sync the whole foundation merely to change the jobs image.
+Official references: [Sign in with ChatGPT](https://learn.chatgpt.com/docs/sign-in-with-chatgpt), [Codex configuration](https://learn.chatgpt.com/docs/config-file/config-reference), [model selection](https://developers.openai.com/api/docs/guides/model-selection).
