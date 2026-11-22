@@ -4,6 +4,14 @@ sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'job-worker'))
 from job_matching import parse_decision,professional_facts,local_screen
 
 class JobMatchingTests(unittest.TestCase):
+ def test_new_cv_section_order_preserves_experience_and_omits_private_answers(self):
+  c={'personals':{'first_name':'Test','last_name':'Candidate'},'questions':{'user_information_all':'Test Candidate\nuser@example.test +971 50 123 4567\nPROFESSIONAL SUMMARY\nLinux operations.\nTECHNICAL SKILLS\nLinux, HAProxy\nPROFESSIONAL EXPERIENCE\nIP GEEKS | Oct 2022 - Present\nMySQL replication, failover and kernel patching.\nTest Candidate | DevOps & Infrastructure\nPROFESSIONAL EXPERIENCE CONTINUED\nMurabba | Nov 2014 - Apr 2023\nDEVOPS PROJECT\nAWS personal labs.\nCERTIFICATION AND EDUCATION\nBachelor of Social Work.\nBoundary: CKA issued Nov 2023; active status unknown.\nInvestor residency in UAE.\nOwner-confirmed: salary private'}}
+  f=professional_facts(c);s=str(f)
+  self.assertIn('replication',f['Professional Experience']);self.assertIn('Nov 2014',f['Professional Experience'])
+  self.assertIn('Social Work',f['Certification and Education']);self.assertIn('active status unknown',f['Limits'])
+  for private in ('user@example','+971','Test Candidate','residency','salary private'):self.assertNotIn(private,s)
+ def test_profile_without_professional_headings_is_refused(self):
+  with self.assertRaises(ValueError):professional_facts({'questions':{'user_information_all':'Contact\nBoundary: labs only'}})
  def test_unknown_mandatory_requirements_block_automatic_submission(self):
   d=parse_decision('{"eligible":true,"reason":"Uncertain","required_unknown":["Work permit"],"gaps":[]}')
   self.assertFalse(d['eligible'])

@@ -410,7 +410,7 @@
         "namespace": "hermes"
       },
       "spec": {
-        "schedule": "0 2,8,14,20 * * *",
+        "schedule": "0 8 * * *",
         "timeZone": "Asia/Dubai",
         "concurrencyPolicy": "Forbid",
         "startingDeadlineSeconds": 300,

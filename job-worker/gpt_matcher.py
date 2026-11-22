@@ -15,9 +15,24 @@ from aiohttp import web
 
 from job_matching import SYSTEM, parse_decision
 from openai_screening import SCHEMA
+from gpt_config import MODEL
 
-MODEL = 'gpt-6.2-sol'
 ANSI = re.compile(r'\x1b\[[0-9;]*[A-Za-z]')
+
+
+def client_failure(stdout):
+    """Expose a useful, fixed diagnostic without returning provider/account details."""
+    for line in stdout.splitlines():
+        try:
+            event = json.loads(line)
+            if event.get('type') not in ('error', 'turn.failed'): continue
+            message = event.get('message') or event.get('error', {}).get('message', '')
+            detail = json.loads(message) if isinstance(message, str) and message.startswith('{') else {}
+            code = detail.get('error', {}).get('code', '')
+            if code == 'model_not_found': return 'The selected GPT model is unavailable for this ChatGPT account; model selection needs updating.'
+            if code in ('usage_limit_reached', 'rate_limit_exceeded'): return 'The ChatGPT account has reached a usage limit; no application was submitted.'
+        except (ValueError, AttributeError, TypeError): continue
+    return 'GPT matching could not complete. Check the ChatGPT connection and model availability.'
 
 
 class Matcher:
@@ -124,13 +139,13 @@ class Matcher:
                         os.killpg(proc.pid, signal.SIGKILL); proc.communicate()
                     raise ValueError('GPT matching timed out; no application was submitted') from None
                 if proc.returncode:
-                    raise ValueError('GPT matching could not complete. Check the ChatGPT connection and model availability.')
+                    raise ValueError(client_failure(stdout))
                 # Discard an unexpected tool-using turn instead of trusting its answer.
                 for line in stdout.splitlines():
                     try: event = json.loads(line)
                     except ValueError: continue
                     kind = str(event.get('item', {}).get('type', ''))
-                    if kind and kind not in ('agent_message', 'reasoning'):
+                    if kind and kind not in ('agent_message', 'reasoning', 'error'):
                         raise ValueError('GPT used an unexpected tool; screening was held for review')
                 decision = parse_decision((folder / 'decision.json').read_text())
                 return decision

@@ -1,4 +1,4 @@
-"""Six bounded OpenAI fit checks. Reads professional facts only; never applies to jobs."""
+"""Eight bounded OpenAI fit checks. Reads professional facts only; never applies to jobs."""
 import argparse
 import json
 import os
@@ -13,6 +13,8 @@ CASES = [
     ('basic-cloud-support', True, 'Systems Engineer', 'Monitor Linux servers, maintain backups, troubleshoot incidents and DNS. Assist with basic Azure administration under supervision. Cloud lab exposure is sufficient.'),
     ('unverified-ai', False, 'AI Automation & DevOps Engineer', 'Maintain Linux servers and backups. Requirements: strong Node.js backend development and prior AI/LLM API integration into production systems. Docker and monitoring required.'),
     ('production-cloud-tenure', False, 'DevOps Engineer', 'Maintain Linux servers and backups. Mandatory: 5 years of production Azure architecture, Azure DevOps and Ansible experience. Personal labs are insufficient.'),
+    ('mandatory-payments-domain', False, 'Systems Analyst - SRE Payments', 'Maintain Linux servers, monitoring, backups and incidents. Mandatory: eight years supporting banking and payment-processing platforms, ISO 20022, Payment Hub and real-time payment infrastructure.'),
+    ('mandatory-technical-degree', False, 'Linux Systems Engineer', 'Maintain Linux servers, DNS, backups, monitoring and incident response. Mandatory completed bachelor degree in Computer Science or Information Technology; other degree disciplines and equivalent experience are not accepted.'),
     ('nationality-restriction', False, 'Linux Engineer', 'Emirati nationals only. Maintain Linux servers, DNS, backups and incident response.'),
     ('conflicting-location', False, 'Infrastructure Engineer', 'Listing header says Dubai, UAE. Mandatory full-time on-site residence and employment in Pakistan; this is not a UAE role. Maintain Linux servers, DNS, backups and incident response.'),
 ]

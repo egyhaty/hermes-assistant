@@ -20,6 +20,6 @@ class SchedulerTests(unittest.TestCase):
    self.assertEqual(m.main(),0);self.assertEqual(req.call_args.args[0],'/control/schedule-check')
  def test_cron_is_staged_isolated_and_forbids_overlap(self):
   objects=load('render').render('ghcr.io/example/jobs@sha256:'+'a'*64)['items'];cron=next(x for x in objects if x['kind']=='CronJob');spec=cron['spec']
-  self.assertEqual(spec['schedule'],'0 2,8,14,20 * * *');self.assertEqual(spec['timeZone'],'Asia/Dubai');self.assertEqual(spec['concurrencyPolicy'],'Forbid');self.assertTrue(spec['suspend'])
+  self.assertEqual(spec['schedule'],'0 8 * * *');self.assertEqual(spec['timeZone'],'Asia/Dubai');self.assertEqual(spec['concurrencyPolicy'],'Forbid');self.assertTrue(spec['suspend'])
   job=spec['jobTemplate']['spec'];self.assertNotIn('activeDeadlineSeconds',job);pod=job['template']['spec'];self.assertFalse(pod['automountServiceAccountToken']);self.assertNotIn('volumes',pod)
   serialized=str(pod);self.assertNotIn('hermes-ssh',serialized);self.assertNotIn('hermes-jobs-auth',serialized);self.assertNotIn('hermes-free-api',serialized)

@@ -9,10 +9,25 @@ from unittest.mock import patch
 from aiohttp.test_utils import TestClient, TestServer
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'job-worker'))
-from gpt_matcher import Matcher, create_app
+from gpt_matcher import Matcher, create_app, client_failure
 
 
 class GPTServiceTests(unittest.TestCase):
+    def test_model_diagnostic_is_useful_without_raw_account_details(self):
+        error=json.dumps({'type':'error','message':json.dumps({'error':{'code':'model_not_found','message':'private@example.test account detail'}})})
+        message=client_failure(error)
+        self.assertIn('model',message);self.assertNotIn('private@example.test',message)
+
+    def test_successful_decision_survives_non_tool_startup_diagnostic(self):
+        class Process:
+            returncode = 0
+            def __init__(inner, argv, **kwargs):
+                inner.output = Path(argv[argv.index('--output-last-message')+1])
+            def communicate(inner, prompt, timeout):
+                inner.output.write_text(json.dumps({'eligible':True,'reason':'Linux match','required_unknown':[],'gaps':[]}))
+                return json.dumps({'item':{'type':'error','message':'startup diagnostic'}}), ''
+        with patch.object(self.matcher,'connected',return_value=True),patch('gpt_matcher.subprocess.Popen',side_effect=Process):
+            self.assertTrue(self.matcher.match('synthetic professional facts')['eligible'])
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory(); self.addCleanup(self.tmp.cleanup)
         self.matcher = Matcher(self.tmp.name)
