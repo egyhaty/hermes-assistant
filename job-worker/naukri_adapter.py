@@ -38,6 +38,8 @@ def submit(page, job, journal, digest):
     url = job['url']
     if already_applied(job) or not job['easyApply']:
         return 'already_applied' if already_applied(job) else 'unsupported'
+    from application_context import require_reviewed_page
+    require_reviewed_page(page, job)
     if not journal.claim(url, digest):
         return 'not_claimed'
     try:

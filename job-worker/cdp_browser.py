@@ -57,8 +57,14 @@ class BrowserPage:
     def wait(self, expression, seconds=20):
         until = time.monotonic() + seconds
         while time.monotonic() < until:
-            if self.js(expression):
-                return True
+            try:
+                # Serializing a DOM node can fail with "Object reference chain
+                # is too long"; readiness expressions need only a boolean.
+                if self.js('!!(' + expression + ')'):
+                    return True
+            except RuntimeError as error:
+                if not any(word in str(error).lower() for word in ('context', 'page operation failed')):
+                    raise
             time.sleep(1)
         return False
 

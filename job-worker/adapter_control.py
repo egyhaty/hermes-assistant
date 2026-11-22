@@ -22,7 +22,8 @@ def status(app):
         data = {}
     proc = app.get('adapter_proc')
     running = bool(proc and proc.poll() is None)
-    data.update(running=running, pid=proc.pid if running else None, engine='naukrigulf')
+    engine = os.environ.get('JOB_APPLICATION_ENGINE', 'naukrigulf')
+    data.update(running=running, pid=proc.pid if running else None, engine=engine)
     if proc and not running:
         data['exit_code'] = 0 if data.get('cancelled') else proc.returncode
     elif not proc and data.get('started_at') and not data.get('finished_at'):
@@ -32,7 +33,8 @@ def status(app):
     counts=journal.counts()
     data['counts'] = {name: counts.get(name,0) for name in ('confirmed', 'eligible', 'skipped', 'needs_input', 'uncertain', 'attempting')}
     data['applications'] = [{k: r[k] for k in ('source', 'job', 'status', 'reason', 'updated', 'attempts')} for r in rows[:100]]
-    data['enabled'] = os.environ.get('JOB_APPLICATION_ENGINE') == 'naukrigulf'
+    data['enabled'] = engine in ('naukrigulf', 'multisite')
+    data['active_sources'] = os.environ.get('JOB_ACTIVE_SOURCES', 'naukrigulf').split(',') if engine == 'multisite' else ['naukrigulf']
     data['screening_mode'] = os.environ.get('JOB_SCREENING_MODE','local')
     if data['screening_mode'] == 'codex':
         from gpt_gateway import validation_status, request
@@ -44,11 +46,19 @@ def status(app):
         data['ready_to_apply'] = bool(connection.get('connected') and data['gpt']['validation'].get('ready'))
     else:
         data['ready_to_apply'] = data['enabled']
+    data['ready_error'] = profile_ready_error()
+    if engine == 'multisite':
+        from multisite_worker import cv_sync_error
+        data['source_readiness'] = [{'source': source, 'error': cv_sync_error(source)} for source in data['active_sources']]
+        if not any(not item['error'] for item in data['source_readiness']):
+            data['ready_error'] = 'Synchronize the reviewed CV with at least one enabled board before applying'
+    if data['ready_error']: data['ready_to_apply'] = False
     return data
 
 
 def start(app):
-    if os.environ.get('JOB_APPLICATION_ENGINE') != 'naukrigulf':
+    engine = os.environ.get('JOB_APPLICATION_ENGINE')
+    if engine not in ('naukrigulf', 'multisite'):
         raise ValueError('The application adapter is not enabled yet')
     existing = app.get('adapter_proc')
     if existing and existing.poll() is None:
@@ -56,6 +66,10 @@ def start(app):
     error = profile_ready_error()
     if error:
         raise ValueError(error)
+    if engine == 'multisite':
+        from multisite_worker import sources, cv_sync_error
+        if not any(not cv_sync_error(source) for source in sources()):
+            raise ValueError('No board has the current reviewed CV synchronized yet')
     if os.environ.get('JOB_SCREENING_MODE','local') == 'codex':
         from gpt_gateway import readiness_error
         error = readiness_error()
@@ -74,10 +88,12 @@ def start(app):
     with log_file.open('a') as log:
         log_file.chmod(0o600)
         env = dict(os.environ, JOB_RUN_ID=run_id)
-        proc = subprocess.Popen([sys.executable, str(Path(__file__).with_name('naukri_worker.py')), '--execute'],
+        script = 'multisite_worker.py' if engine == 'multisite' else 'naukri_worker.py'
+        args = [] if engine == 'multisite' else ['--execute']
+        proc = subprocess.Popen([sys.executable, str(Path(__file__).with_name(script)), *args],
                                 cwd=str(DATA), env=env, stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
     app['adapter_proc'] = proc
-    return {'running': True, 'pid': proc.pid, 'engine': 'naukrigulf'}
+    return {'running': True, 'pid': proc.pid, 'engine': engine}
 
 
 def stop(app):
@@ -102,8 +118,9 @@ def stop(app):
 
 
 def check():
-    result = subprocess.run([sys.executable, str(Path(__file__).with_name('naukri_worker.py')), '--check'], cwd=str(DATA),
+    script = 'multisite_worker.py' if os.environ.get('JOB_APPLICATION_ENGINE') == 'multisite' else 'naukri_worker.py'
+    result = subprocess.run([sys.executable, str(Path(__file__).with_name(script)), '--check'], cwd=str(DATA),
                             stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=90)
     if result.returncode:
         raise ValueError('Application readiness check failed: ' + result.stderr[-350:])
-    return {'ready': True, 'started': False, 'engine': 'naukrigulf'}
+    return {'ready': True, 'started': False, 'engine': os.environ.get('JOB_APPLICATION_ENGINE', 'naukrigulf')}

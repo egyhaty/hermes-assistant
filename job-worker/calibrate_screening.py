@@ -1,4 +1,4 @@
-"""Eight bounded OpenAI fit checks. Reads professional facts only; never applies to jobs."""
+"""Ten bounded OpenAI fit checks. Reads professional facts only; never applies to jobs."""
 import argparse
 import json
 import os
@@ -19,6 +19,11 @@ CASES = [
     ('conflicting-location', False, 'Infrastructure Engineer', 'Listing header says Dubai, UAE. Mandatory full-time on-site residence and employment in Pakistan; this is not a UAE role. Maintain Linux servers, DNS, backups and incident response.'),
 ]
 
+REMOTE_CASES = [
+    ('worldwide-hosting', True, 'Linux Hosting Support Engineer', 'Fully remote worldwide, including applicants based in the UAE. Maintain Linux hosting, cPanel/WHM, Apache, MySQL and mail services. Own customer L3 incidents and recovery. No specific technical degree or production public-cloud tenure is required.'),
+    ('remote-country-restricted', False, 'Linux Hosting Support Engineer', 'Remote US-only. Candidates must reside in the United States and already possess US work authorization. Maintain Linux hosting, cPanel, Apache and MySQL.'),
+]
+
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -34,9 +39,9 @@ def main():
     os.umask(0o077)
     results = []
     args.out.parent.mkdir(parents=True, exist_ok=True)
-    for name, expected, title, description in CASES:
+    for (name, expected, title, description), scope in ([(row, 'devops_uae') for row in CASES] + [(row, 'hosting_remote') for row in REMOTE_CASES]):
         started = time.monotonic()
-        result = screen(config, {'title': title, 'company': 'Synthetic calibration company', 'head': title + '\nDubai, UAE', 'description': description})
+        result = screen(config, {'title': title, 'company': 'Synthetic calibration company', 'head': title + '\nDubai, UAE', 'description': description}, scope=scope)
         row = {'case': name, 'expected': expected, 'decision': result, 'seconds': round(time.monotonic() - started, 2), 'passed': result['eligible'] is expected}
         results.append(row)
         args.out.write_text(json.dumps({'model': MODEL, 'submitted_applications': 0, 'results': results}, indent=2))

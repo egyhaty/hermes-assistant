@@ -17,11 +17,16 @@ def validate():
  if not (DATA/'resume.pdf').is_file() or not (DATA/'resume.pdf').read_bytes().startswith(b'%PDF-'):return 'Upload your current PDF resume.'
  sec=c.get('secrets',{})
  if sec.get('use_AI'):
-  provider=os.environ.get('JOB_AI_PROVIDER','openrouter')
+  if os.environ.get('JOB_SCREENING_MODE')=='codex':
+   if os.environ.get('JOB_SCREENING_SHARING_APPROVED')!='1':return 'Enable the owner-approved professional-summary sharing with GPT first.'
+   # Official ChatGPT sign-in is checked by the private matcher readiness gate.
+   # A legacy Groq/OpenRouter API key is not required in this mode.
+   provider='codex'
+  else:provider=os.environ.get('JOB_AI_PROVIDER','openrouter')
   if provider=='groq':
    if sec.get('llm_model')!='openai/gpt-oss-120b':return 'Only the configured Groq free-plan model is enabled.'
    if not os.environ.get('GROQ_API_KEY'):return 'Add the dedicated Groq free-plan API Secret first.'
-  elif provider!='openrouter' or not str(sec.get('llm_model','')).endswith(':free'):return 'Only an explicitly free OpenRouter model is allowed.'
+  elif provider!='codex' and (provider!='openrouter' or not str(sec.get('llm_model','')).endswith(':free')):return 'Only an explicitly free OpenRouter model is allowed.'
  if c.get('search',{}).get('easy_apply_only') is not True:return 'Only Easy Apply is enabled for this worker.'
  return None
 def profile_ready_error():

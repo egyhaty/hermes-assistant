@@ -28,12 +28,12 @@ class Journal:
         if not url or len(cv_sha256) != 64 or not reason.strip():
             raise ValueError('A board job URL, CV digest and review reason are required')
         with self.connect() as db:
-            row = db.execute('SELECT status,attempts,job FROM applications WHERE url=?', (url,)).fetchone()
+            row = db.execute('SELECT status,attempts,job,cv_sha256 FROM applications WHERE url=?', (url,)).fetchone()
             if row:
                 previous = json.loads(row[2]).get('screening')
                 current = job.get('screening')
                 # Reconsider only an unattempted rejection by another matcher.
-                reconsider = row[0] == 'skipped' and row[1] == 0 and previous and current and current.get('provider') in ('codex', 'openai') and previous.get('provider', 'local') != current.get('provider')
+                reconsider = row[0] == 'skipped' and row[1] == 0 and current and current.get('provider') in ('codex', 'openai') and (row[3] != cv_sha256 or previous and previous.get('provider', 'local') != current.get('provider'))
                 if not reconsider: return row[0]
                 status = 'eligible' if eligible else 'skipped'
                 db.execute('UPDATE applications SET job=?,cv_sha256=?,status=?,reason=?,updated=? WHERE url=? AND status="skipped" AND attempts=0',
@@ -72,12 +72,12 @@ class Journal:
         with self.connect() as db:
             return dict(db.execute('SELECT status,COUNT(*) FROM applications GROUP BY status'))
 
-    def known_urls(self, provider=None):
+    def known_urls(self, provider=None, cv_sha256=None):
         with self.connect() as db:
             known = set()
-            for url, status, attempts, raw in db.execute('SELECT url,status,attempts,job FROM applications'):
+            for url, status, attempts, raw, previous_cv in db.execute('SELECT url,status,attempts,job,cv_sha256 FROM applications'):
                 screening = json.loads(raw).get('screening')
-                if provider in ('codex', 'openai') and status == 'skipped' and attempts == 0 and screening and screening.get('provider', 'local') != provider:
+                if provider in ('codex', 'openai') and status == 'skipped' and attempts == 0 and ((cv_sha256 and previous_cv != cv_sha256) or screening and screening.get('provider', 'local') != provider):
                     continue
                 known.add(url)
             return known

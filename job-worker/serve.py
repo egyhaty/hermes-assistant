@@ -111,7 +111,7 @@ async def handle(request):
   return web.json_response({'error':'An application cycle is already running. Stop it before using the legacy controls.'},status=409)
  if request.path.startswith('/jobs/applications/'):
   return await application_handle(request)
- if request.path in ('/control/status','/control/start','/control/stop','/control/scheduled-start','/control/schedule-check') and os.environ.get('JOB_APPLICATION_ENGINE')=='naukrigulf':
+ if request.path in ('/control/status','/control/start','/control/stop','/control/scheduled-start','/control/schedule-check') and os.environ.get('JOB_APPLICATION_ENGINE') in ('naukrigulf','multisite'):
   action={'/control/status':'status','/control/start':'start','/control/stop':'stop','/control/scheduled-start':'start','/control/schedule-check':'check'}[request.path]
   return await application_handle(request,action)
  if request.path.startswith('/jobs/discovery/'):
@@ -373,7 +373,7 @@ def main():
  for name in ('USERNAME','PASSWORD_HASH','CONTROL_TOKEN'):
   if not os.environ.get(name):raise SystemExit('Missing required worker authentication')
  seed()
- if os.environ.get('JOB_AI_PROVIDER')=='groq' and os.environ.get('GROQ_API_KEY'):
+ if os.environ.get('JOB_SCREENING_MODE')!='codex' and os.environ.get('JOB_AI_PROVIDER')=='groq' and os.environ.get('GROQ_API_KEY'):
   # Preserve the approval of verified personal facts when changing only AI routing.
   config=Path('/data/user_config.json');marker=Path('/data/profile-ready')
   armed=marker.exists() and marker.read_text()==profile_digest()

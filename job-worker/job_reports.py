@@ -35,10 +35,10 @@ def safe_cell(value):
 
 def applications_csv(journal):
     out = io.StringIO(); writer = csv.writer(out)
-    writer.writerow(['Updated (Dubai)', 'Site', 'Company', 'Role', 'Location', 'Status', 'Attempts', 'Reason', 'Fit audit', 'URL'])
+    writer.writerow(['Updated (Dubai)', 'Site', 'Track', 'Company', 'Role', 'Location', 'Status', 'Attempts', 'Reason', 'Fit audit', 'URL'])
     for row in journal.report_records():
         job = row['job']
-        writer.writerow([safe_cell(value) for value in (dubai_time(row['updated']), row['source'], job.get('company', ''), job.get('title', ''),
+        writer.writerow([safe_cell(value) for value in (dubai_time(row['updated']), row['source'], job.get('track', 'devops_uae'), job.get('company', ''), job.get('title', ''),
                          job.get('location', ''), row['status'], row['attempts'], row['reason'],
                          job.get('screening_audit', {}).get('reason', ''), row['url'])])
     return '\ufeff' + out.getvalue()

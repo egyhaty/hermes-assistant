@@ -16,6 +16,7 @@ class NaukriAdapterTests(unittest.TestCase):
   class Page:
    clicks=0
    def js(self,code):
+    if code=='location.href':return owner.job['url']
     if 'b.click()' in code:
      owner.assertEqual(owner.j.snapshot()[0]['status'],'attempting')
      self.clicks+=1;return True

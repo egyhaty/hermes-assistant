@@ -26,7 +26,7 @@ class ReportTests(unittest.TestCase):
     def test_export_neutralises_spreadsheet_formulas(self):
         self.journal.review(self.job, 'a' * 64, False, 'Skipped')
         rows = list(csv.reader(io.StringIO(applications_csv(self.journal).lstrip('\ufeff'))))
-        self.assertEqual(rows[1][3], "'=untrusted_formula()")
+        self.assertEqual(rows[1][rows[0].index('Role')], "'=untrusted_formula()")
 
     def test_dubai_date_does_not_use_host_timezone(self):
         self.assertEqual(dubai_time(0), '')
