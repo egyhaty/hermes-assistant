@@ -126,11 +126,11 @@
                 "resources": {
                   "requests": {
                     "cpu": "500m",
-                    "memory": "2Gi"
+                    "memory": "3Gi"
                   },
                   "limits": {
                     "cpu": "2",
-                    "memory": "4Gi"
+                    "memory": "6Gi"
                   }
                 },
                 "startupProbe": {
@@ -575,7 +575,7 @@
         "namespace": "hermes"
       },
       "data": {
-        "99-hermes-session": "CHROMIUM_FLAGS=\"$CHROMIUM_FLAGS --restore-last-session\"\n"
+        "99-hermes-session": "CHROMIUM_FLAGS=\"$CHROMIUM_FLAGS --restore-last-session --disable-features=BackForwardCache\"\n"
       }
     }
   ]

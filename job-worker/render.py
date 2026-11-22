@@ -11,7 +11,7 @@ def render(image):
  'containers':[{'name':'jobs','image':image,'env':[{'name':'JOB_RUN_SECONDS','value':'0'},{'name':'JOB_FINISH_SEARCH','value':'1'}],'envFrom':[{'secretRef':{'name':'hermes-jobs-auth'}},{'secretRef':{'name':'hermes-free-api'}},{'secretRef':{'name':'hermes-jobs-groq','optional':True}},{'secretRef':{'name':'hermes-jobs-openai','optional':True}},{'secretRef':{'name':'hermes-jobs-matcher-auth','optional':True}}],
  'securityContext':{'readOnlyRootFilesystem':True,'allowPrivilegeEscalation':False,'capabilities':{'drop':['ALL']},'appArmorProfile':{'type':'Localhost','localhostProfile':'hermes-jobs-browser'}},
  'ports':[{'name':'http','containerPort':9118}],
- 'resources':{'requests':{'cpu':'500m','memory':'2Gi'},'limits':{'cpu':'2','memory':'4Gi'}},
+ 'resources':{'requests':{'cpu':'500m','memory':'3Gi'},'limits':{'cpu':'2','memory':'6Gi'}},
  'startupProbe':{'httpGet':{'path':'/health','port':9118},'periodSeconds':5,'timeoutSeconds':5,'failureThreshold':24},
  'readinessProbe':{'httpGet':{'path':'/health','port':9118},'periodSeconds':10,'timeoutSeconds':5},
  'livenessProbe':{'httpGet':{'path':'/health','port':9118},'periodSeconds':10,'timeoutSeconds':5,'failureThreshold':6},
@@ -38,7 +38,7 @@ def render(image):
     'resources':{'requests':{'cpu':'10m','memory':'32Mi'},'limits':{'cpu':'100m','memory':'128Mi'}}}]}}}}}})
  pod['volumes'].append({'name':'chromium-startup','configMap':{'name':'hermes-jobs-chromium-startup','defaultMode':292}})
  pod['containers'][0]['volumeMounts'].append({'name':'chromium-startup','mountPath':'/etc/chromium.d/99-hermes-session','subPath':'99-hermes-session','readOnly':True})
- objects.append({'apiVersion':'v1','kind':'ConfigMap','metadata':meta('hermes-jobs-chromium-startup'),'data':{'99-hermes-session':'CHROMIUM_FLAGS="$CHROMIUM_FLAGS --restore-last-session"\n'}})
+ objects.append({'apiVersion':'v1','kind':'ConfigMap','metadata':meta('hermes-jobs-chromium-startup'),'data':{'99-hermes-session':'CHROMIUM_FLAGS="$CHROMIUM_FLAGS --restore-last-session --disable-features=BackForwardCache"\n'}})
  objects.append({'apiVersion':'networking.k8s.io/v1','kind':'NetworkPolicy','metadata':meta('hermes-jobs-scheduler'),'spec':{
   'podSelector':{'matchLabels':scheduler_labels},'policyTypes':['Ingress','Egress'],'ingress':[],
   'egress':[{'to':[{'podSelector':{'matchLabels':labels}}],'ports':[{'protocol':'TCP','port':9118}]},
