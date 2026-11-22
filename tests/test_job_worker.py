@@ -24,6 +24,9 @@ class JobWorkerTests(unittest.TestCase):
   with patch.dict(os.environ,{'JOB_AI_PROVIDER':'groq','GROQ_API_KEY':'fixture-only'}):self.assertIsNone(self.g.validate())
   self.config['secrets']['llm_model']='arbitrary-paid-model';self.save()
   with patch.dict(os.environ,{'JOB_AI_PROVIDER':'groq','GROQ_API_KEY':'fixture-only'}):self.assertIn('free-plan',self.g.validate())
+ def test_chatgpt_mode_does_not_require_a_legacy_provider_key(self):
+  self.config['secrets']={'use_AI':True,'llm_model':'legacy-provider-value'};self.save()
+  with patch.dict(os.environ,{'JOB_SCREENING_MODE':'codex','JOB_SCREENING_SHARING_APPROVED':'1','GROQ_API_KEY':'','OPENAI_API_KEY':''}):self.assertIsNone(self.g.validate())
  def test_profile_or_resume_change_invalidates_setup(self):
   (self.data/'profile-ready').write_text(self.g.profile_digest());(self.data/'resume.pdf').write_bytes(b'%PDF-1.7\nchanged')
   self.assertIn('Profile changed',self.g.require_ready())

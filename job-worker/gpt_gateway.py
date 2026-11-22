@@ -55,7 +55,7 @@ def readiness_error():
 
 def ensure_validated(retry=False):
     from job_matching import screen
-    from calibrate_screening import CASES
+    from calibrate_screening import CASES, REMOTE_CASES
     from worker_guard import profile_ready_error
     error = profile_ready_error()
     if error: raise ValueError(error)
@@ -75,9 +75,10 @@ def ensure_validated(retry=False):
         save()
         config = json.loads((DATA / 'user_config.json').read_text())
         try:
-            for name, expected, title, description in CASES:
+            scoped_cases = [(row, 'devops_uae') for row in CASES] + [(row, 'hosting_remote') for row in REMOTE_CASES]
+            for (name, expected, title, description), scope in scoped_cases:
                 start = time.monotonic()
-                decision = screen(config, {'title': title, 'company': 'Synthetic validation company', 'head': title + '\nDubai, UAE', 'description': description})
+                decision = screen(config, {'title': title, 'company': 'Synthetic validation company', 'head': title + '\nDubai, UAE', 'description': description}, scope=scope)
                 state['results'].append({'case': name, 'passed': decision['eligible'] is expected,
                                          'seconds': round(time.monotonic() - start, 2), 'decision': decision})
                 save()
