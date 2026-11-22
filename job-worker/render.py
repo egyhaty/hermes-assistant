@@ -11,7 +11,7 @@ def render(image):
  'containers':[{'name':'jobs','image':image,'env':[{'name':'JOB_RUN_SECONDS','value':'0'},{'name':'JOB_FINISH_SEARCH','value':'1'}],'envFrom':[{'secretRef':{'name':'hermes-jobs-auth'}},{'secretRef':{'name':'hermes-free-api'}},{'secretRef':{'name':'hermes-jobs-groq','optional':True}},{'secretRef':{'name':'hermes-jobs-openai','optional':True}},{'secretRef':{'name':'hermes-jobs-matcher-auth','optional':True}}],
  'securityContext':{'readOnlyRootFilesystem':True,'allowPrivilegeEscalation':False,'capabilities':{'drop':['ALL']},'appArmorProfile':{'type':'Localhost','localhostProfile':'hermes-jobs-browser'}},
  'ports':[{'name':'http','containerPort':9118}],
- 'resources':{'requests':{'cpu':'250m','memory':'512Mi'},'limits':{'cpu':'1','memory':'2Gi'}},
+ 'resources':{'requests':{'cpu':'500m','memory':'2Gi'},'limits':{'cpu':'2','memory':'4Gi'}},
  'startupProbe':{'httpGet':{'path':'/health','port':9118},'periodSeconds':5,'timeoutSeconds':5,'failureThreshold':24},
  'readinessProbe':{'httpGet':{'path':'/health','port':9118},'periodSeconds':10,'timeoutSeconds':5},
  'livenessProbe':{'httpGet':{'path':'/health','port':9118},'periodSeconds':10,'timeoutSeconds':5,'failureThreshold':6},
