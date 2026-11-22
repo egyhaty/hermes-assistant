@@ -31,6 +31,7 @@ class NaukriAdapterTests(unittest.TestCase):
    def goto(self,url):pass
    def wait(self,*args):return True
    def js(self,code):return job
+   def read(self,code):return job
   result=inspect_job(Page(),self.job['url'])
   self.assertEqual(result['title'],'Linux Administrator');self.assertEqual(result['company'],'Example Company')
  def test_unknown_required_form_gets_no_additional_submit(self):

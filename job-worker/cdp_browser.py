@@ -54,6 +54,16 @@ class BrowserPage:
         self.call('Page.navigate', url=url)
         time.sleep(3)
 
+    def read(self, code):
+        """Retry read-only observations across a page's navigation transition."""
+        for attempt in range(4):
+            try:
+                return self.js(code)
+            except RuntimeError as error:
+                if attempt == 3 or not any(word in str(error).lower() for word in ('context', 'navigated or closed', 'page operation failed')):
+                    raise
+                time.sleep(0.5)
+
     def wait(self, expression, seconds=20):
         until = time.monotonic() + seconds
         while time.monotonic() < until:

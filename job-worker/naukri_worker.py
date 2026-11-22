@@ -39,7 +39,7 @@ def search_pages(page, term):
         visited.add(url)
         page.goto(url)
         page.wait("document.querySelectorAll('a[href*=\"-jid-\"]').length>0||/security verification|No jobs found/i.test(document.body.innerText)", 20)
-        data = page.js('''(()=>{const text=document.body.innerText;if(/security verification|verify you are not a bot/i.test(text.slice(0,1000)))return {challenge:true,jobs:[],next:null};const seen=new Set();const jobs=[];for(const a of document.querySelectorAll('a[href*="-jid-"]')){const title=a.innerText.trim().split('\\n')[0];if(!title||seen.has(a.href))continue;seen.add(a.href);let c=a;for(let i=0;i<7&&c.parentElement&&c.parentElement.tagName!=='BODY';i++){const parent=c.parentElement;const ids=new Set(Array.from(parent.querySelectorAll('a[href*="-jid-"]')).map(x=>x.href));if(ids.size>1||parent.innerText.length>3500)break;c=parent;}jobs.push({source:'naukrigulf',url:a.href,title,card:c.innerText.slice(0,2000)});}const next=Array.from(document.querySelectorAll('a')).find(a=>a.innerText.trim()==='Next'&&a.getBoundingClientRect().height>0);return {challenge:false,jobs,next:next?.href||null};})()''')
+        data = page.read('''(()=>{const text=document.body.innerText;if(/security verification|verify you are not a bot/i.test(text.slice(0,1000)))return {challenge:true,jobs:[],next:null};const seen=new Set();const jobs=[];for(const a of document.querySelectorAll('a[href*="-jid-"]')){const title=a.innerText.trim().split('\\n')[0];if(!title||seen.has(a.href))continue;seen.add(a.href);let c=a;for(let i=0;i<7&&c.parentElement&&c.parentElement.tagName!=='BODY';i++){const parent=c.parentElement;const ids=new Set(Array.from(parent.querySelectorAll('a[href*="-jid-"]')).map(x=>x.href));if(ids.size>1||parent.innerText.length>3500)break;c=parent;}jobs.push({source:'naukrigulf',url:a.href,title,card:c.innerText.slice(0,2000)});}const next=Array.from(document.querySelectorAll('a')).find(a=>a.innerText.trim()==='Next'&&a.getBoundingClientRect().height>0);return {challenge:false,jobs,next:next?.href||null};})()''')
         if data['challenge']:
             raise RuntimeError('Naukrigulf requires manual security verification')
         yield data['jobs']
@@ -109,7 +109,7 @@ def run(check=False, execute=False, terms=None, source='naukrigulf', track='devo
         elif source == 'linkedin':
             page.goto('https://www.linkedin.com/feed/')
             page.wait("location.pathname.startsWith('/feed')||/login|checkpoint|authwall/.test(location.pathname)", 25)
-            if not page.js("location.pathname.startsWith('/feed')"):
+            if not page.read("location.pathname.startsWith('/feed')"):
                 raise RuntimeError('Sign in to LinkedIn in the private browser first')
         else:
             from board_adapter import PROFILE

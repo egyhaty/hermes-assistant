@@ -38,6 +38,18 @@ class ScopeAndBoundaryTests(unittest.TestCase):
         with patch('cdp_browser.time.sleep'):
             self.assertTrue(page.wait("document.querySelector('main')"))
         self.assertEqual(len(calls), 2)
+
+    def test_read_only_metadata_observation_survives_a_redirect(self):
+        page = BrowserPage.__new__(BrowserPage)
+        calls = []
+        def observe(code):
+            calls.append(code)
+            if len(calls) == 1: raise RuntimeError('Inspected target navigated or closed')
+            return {'title': 'Linux Engineer'}
+        page.js = observe
+        with patch('cdp_browser.time.sleep'):
+            self.assertEqual(page.read('document.title'), {'title': 'Linux Engineer'})
+        self.assertEqual(len(calls), 2)
     def test_worldwide_hosting_and_uae_remote_are_within_scope(self):
         for location in ('Remote worldwide', 'Work remotely from the UAE'):
             self.assertIsNone(scope_error({'title': 'Linux Hosting Support Engineer', 'head': location}, 'hosting_remote'))
