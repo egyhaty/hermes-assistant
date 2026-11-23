@@ -21,7 +21,7 @@ from worker_guard import profile_ready_error
 DATA = Path(os.environ.get('JOB_DATA', '/data'))
 STATE = DATA / '.adapter-run-state.json'
 TERMS = ['Linux System Administrator', 'Linux Administrator', 'Linux Support Engineer', 'Hosting Support Engineer', 'DevOps Engineer', 'Infrastructure Engineer']
-ROLE = re.compile(r'linux|devops|infrastructure|platform|hosting|cpanel|wordpress|systems? (?:engineer|admin)|site reliability|\bSRE\b', re.I)
+ROLE = re.compile(r'linux|devops|infra engineer|infrastructure|platform|hosting|cpanel|wordpress|systems? (?:engineer|admin)|site reliability|\bSRE\b', re.I)
 OUTSIDE_ROLE = re.compile(r'civil|construction|structural|road|backend|full.?stack|frontend|sales|business analyst|database administrator', re.I)
 
 
@@ -127,12 +127,16 @@ def run(check=False, execute=False, terms=None, source='naukrigulf', track='devo
             return state
         if os.environ.get('JOB_SCREENING_MODE','local')=='groq' and (not os.environ.get('GROQ_API_KEY') or os.environ.get('JOB_AI_PROVIDER') != 'groq' or os.environ.get('JOB_SCREENING_SHARING_APPROVED')!='1'):
             raise RuntimeError('The configured free-plan screening provider is missing')
-        known = journal.known_urls(os.environ.get('JOB_SCREENING_MODE', 'local'), digest)
+        policy = 'stretch-devops-v1' if os.environ.get('JOB_APPLICATION_POLICY') == 'stretch' else None
+        known = journal.known_urls(os.environ.get('JOB_SCREENING_MODE', 'local'), digest, policy)
+        reconsider = [dict(row['job'], card='', platform_applied=False) for row in journal.snapshot()
+                      if policy and row['source'] == source and row['status'] == 'skipped' and row['attempts'] == 0
+                      and row['url'] not in known and row['job'].get('track', 'devops_uae') == track]
         seen = set()
         selected_terms = ['Linux Hosting Support', 'cPanel Support', 'Linux Support Engineer', 'WordPress Technical Support'] if track == 'hosting_remote' else TERMS
         for term in terms or selected_terms:
             # Finish collecting a query before navigating away to its listings.
-            candidates = []
+            candidates, reconsider = reconsider, []
             pages = search_pages(page, term, remote=True) if track == 'hosting_remote' else search_pages(page, term)
             for jobs in pages:
                 candidates.extend(jobs)
@@ -182,6 +186,9 @@ def run(check=False, execute=False, terms=None, source='naukrigulf', track='devo
                     state_write(state)
                     continue
                 decision = screen(config, {k: job[k] for k in ('title', 'company', 'head', 'description')}, scope=track)
+                if policy:
+                    from application_policy import stretch_review
+                    decision = stretch_review(job, decision, track)
                 job['screening'] = dict(decision, provider=os.environ.get('JOB_SCREENING_MODE', 'local'))
                 reason = decision['reason'] + (' Gaps: ' + '; '.join(decision['gaps']) if decision['gaps'] else '')
                 application_resume, application_digest = resume, digest

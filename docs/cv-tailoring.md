@@ -21,3 +21,16 @@ upload. Other current adapters retain the verified profile CV and mark variants
 The authenticated reports page exposes the editable source download and links
 application records to the archived CV. These contain personal information;
 never share the downloads publicly. Historical applications are unchanged.
+
+## Stretch applications
+
+`JOB_APPLICATION_POLICY=stretch` opts the owner into applications above the
+verified skill/degree/tenure match. Screening remains recorded, but technical
+qualification gaps in DevOps/Linux/infrastructure roles can be treated as
+stretch opportunities instead of automatic exclusions. Gaps remain in the
+application record; neither CV facts nor form answers are changed to satisfy them.
+Nationality, geographical and work-authorization restrictions are not relaxed.
+Unattempted matching rejections from an older policy are reconsidered once.
+Already-applied, attempted, uncertain and unsupported-flow records are not reset.
+The first query includes historical unattempted reviews so reconsideration is not
+limited to listings returned on the current search page.

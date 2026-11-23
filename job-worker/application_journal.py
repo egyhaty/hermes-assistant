@@ -33,7 +33,7 @@ class Journal:
                 previous = json.loads(row[2]).get('screening')
                 current = job.get('screening')
                 # Reconsider only an unattempted rejection by another matcher.
-                reconsider = row[0] == 'skipped' and row[1] == 0 and current and current.get('provider') in ('codex', 'openai') and (row[3] != cv_sha256 or previous and previous.get('provider', 'local') != current.get('provider'))
+                reconsider = row[0] == 'skipped' and row[1] == 0 and current and current.get('provider') in ('codex', 'openai') and (row[3] != cv_sha256 or previous and (previous.get('provider', 'local') != current.get('provider') or current.get('application_policy') and previous.get('application_policy') != current.get('application_policy')))
                 if not reconsider: return row[0]
                 status = 'eligible' if eligible else 'skipped'
                 db.execute('UPDATE applications SET job=?,cv_sha256=?,status=?,reason=?,updated=? WHERE url=? AND status="skipped" AND attempts=0',
@@ -72,12 +72,14 @@ class Journal:
         with self.connect() as db:
             return dict(db.execute('SELECT status,COUNT(*) FROM applications GROUP BY status'))
 
-    def known_urls(self, provider=None, cv_sha256=None):
+    def known_urls(self, provider=None, cv_sha256=None, application_policy=None):
         with self.connect() as db:
             known = set()
             for url, status, attempts, raw, previous_cv in db.execute('SELECT url,status,attempts,job,cv_sha256 FROM applications'):
                 screening = json.loads(raw).get('screening')
                 if provider in ('codex', 'openai') and status == 'skipped' and attempts == 0 and ((cv_sha256 and previous_cv != cv_sha256) or screening and screening.get('provider', 'local') != provider):
+                    continue
+                if application_policy and status == 'skipped' and attempts == 0 and screening and screening.get('application_policy') != application_policy:
                     continue
                 known.add(url)
             return known
