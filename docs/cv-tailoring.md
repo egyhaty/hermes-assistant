@@ -34,3 +34,27 @@ Unattempted matching rejections from an older policy are reconsidered once.
 Already-applied, attempted, uncertain and unsupported-flow records are not reset.
 The first query includes historical unattempted reviews so reconsideration is not
 limited to listings returned on the current search page.
+
+## Email reports
+
+`deploy/jobs-reports.json` runs a separate reporter every five minutes in Dubai
+time. It defers while the application controller reports an active batch and
+sends the completed batch once. The application worker is not restarted for
+report delivery. `--snapshot` explicitly sends a labelled interim report.
+
+The owner recipient and SMTP login live in `hermes-jobs-report-config` Secret
+(keys `recipient`, `username`). Gmail authentication references the existing
+`hermes-gmail` Secret key `HIMALAYA_APP_PASS`; no credentials are copied into
+Git or reports. A narrow network policy permits DNS, authenticated controller
+status and STARTTLS SMTP. Pod affinity co-locates the reporter with the worker
+for the shared ReadWriteOnce PVC.
+
+Mail includes an Arabic status summary, Dubai timestamps, today's records versus
+historical totals, job details, reasons, gaps, missing answers, CV/proof links
+requiring Hermes login, recent run outcomes, and a full UTF-8 CSV attachment.
+Preparing a CV or clicking Apply is never labelled a confirmed submission.
+
+`/data/email-report-delivery.sqlite3` stores a unique delivery ID and Message-ID.
+Only the mail relay's acceptance is recorded as `accepted`; it does not prove
+inbox placement. An ambiguous SMTP send becomes `uncertain` and is not retried
+automatically. Jobs have no automatic restart retries and concurrency is forbidden.

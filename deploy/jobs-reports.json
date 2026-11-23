@@ -1,0 +1,289 @@
+{
+  "apiVersion": "v1",
+  "kind": "List",
+  "items": [
+    {
+      "apiVersion": "batch/v1",
+      "kind": "CronJob",
+      "metadata": {
+        "name": "hermes-jobs-email",
+        "namespace": "hermes"
+      },
+      "spec": {
+        "schedule": "*/5 * * * *",
+        "timeZone": "Asia/Dubai",
+        "concurrencyPolicy": "Forbid",
+        "startingDeadlineSeconds": 120,
+        "successfulJobsHistoryLimit": 2,
+        "failedJobsHistoryLimit": 3,
+        "jobTemplate": {
+          "spec": {
+            "backoffLimit": 0,
+            "activeDeadlineSeconds": 120,
+            "ttlSecondsAfterFinished": 86400,
+            "template": {
+              "metadata": {
+                "labels": {
+                  "app.kubernetes.io/name": "hermes-jobs-email"
+                }
+              },
+              "spec": {
+                "securityContext": {
+                  "runAsUser": 10000,
+                  "runAsGroup": 10000,
+                  "runAsNonRoot": true,
+                  "fsGroup": 10000,
+                  "seccompProfile": {
+                    "type": "RuntimeDefault"
+                  }
+                },
+                "restartPolicy": "Never",
+                "affinity": {
+                  "podAffinity": {
+                    "requiredDuringSchedulingIgnoredDuringExecution": [
+                      {
+                        "labelSelector": {
+                          "matchLabels": {
+                            "app.kubernetes.io/name": "hermes-jobs"
+                          }
+                        },
+                        "topologyKey": "kubernetes.io/hostname"
+                      }
+                    ]
+                  }
+                },
+                "containers": [
+                  {
+                    "name": "report",
+                    "image": "ghcr.io/egyhaty/hermes-assistant-jobs@sha256:8f698f7445f17a402d1297606c80a27a7fe574797717c891f6e74cca270f68da",
+                    "command": [
+                      "python",
+                      "/opt/worker/email_reports.py",
+                      "--dispatch"
+                    ],
+                    "env": [
+                      {
+                        "name": "JOB_CONTROL_URL",
+                        "value": "http://hermes-jobs.hermes.svc.cluster.local/control/status"
+                      },
+                      {
+                        "name": "CONTROL_TOKEN",
+                        "valueFrom": {
+                          "secretKeyRef": {
+                            "name": "hermes-jobs-control",
+                            "key": "CONTROL_TOKEN"
+                          }
+                        }
+                      },
+                      {
+                        "name": "JOB_REPORT_TO",
+                        "valueFrom": {
+                          "secretKeyRef": {
+                            "name": "hermes-jobs-report-config",
+                            "key": "recipient"
+                          }
+                        }
+                      },
+                      {
+                        "name": "JOB_SMTP_USER",
+                        "valueFrom": {
+                          "secretKeyRef": {
+                            "name": "hermes-jobs-report-config",
+                            "key": "username"
+                          }
+                        }
+                      },
+                      {
+                        "name": "JOB_SMTP_PASSWORD",
+                        "valueFrom": {
+                          "secretKeyRef": {
+                            "name": "hermes-gmail",
+                            "key": "HIMALAYA_APP_PASS"
+                          }
+                        }
+                      }
+                    ],
+                    "resources": {
+                      "requests": {
+                        "cpu": "25m",
+                        "memory": "64Mi"
+                      },
+                      "limits": {
+                        "cpu": "250m",
+                        "memory": "256Mi"
+                      }
+                    },
+                    "volumeMounts": [
+                      {
+                        "name": "data",
+                        "mountPath": "/data"
+                      },
+                      {
+                        "name": "tmp",
+                        "mountPath": "/tmp"
+                      }
+                    ],
+                    "securityContext": {
+                      "allowPrivilegeEscalation": false,
+                      "readOnlyRootFilesystem": true,
+                      "capabilities": {
+                        "drop": [
+                          "ALL"
+                        ]
+                      }
+                    }
+                  }
+                ],
+                "volumes": [
+                  {
+                    "name": "data",
+                    "persistentVolumeClaim": {
+                      "claimName": "hermes-data"
+                    }
+                  },
+                  {
+                    "name": "tmp",
+                    "emptyDir": {
+                      "sizeLimit": "32Mi"
+                    }
+                  }
+                ],
+                "imagePullSecrets": [
+                  {
+                    "name": "hermes-registry"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "apiVersion": "networking.k8s.io/v1",
+      "kind": "NetworkPolicy",
+      "metadata": {
+        "name": "hermes-jobs-email",
+        "namespace": "hermes"
+      },
+      "spec": {
+        "podSelector": {
+          "matchLabels": {
+            "app.kubernetes.io/name": "hermes-jobs-email"
+          }
+        },
+        "policyTypes": [
+          "Ingress",
+          "Egress"
+        ],
+        "ingress": [],
+        "egress": [
+          {
+            "to": [
+              {
+                "namespaceSelector": {
+                  "matchLabels": {
+                    "kubernetes.io/metadata.name": "kube-system"
+                  }
+                },
+                "podSelector": {
+                  "matchLabels": {
+                    "k8s-app": "kube-dns"
+                  }
+                }
+              }
+            ],
+            "ports": [
+              {
+                "protocol": "UDP",
+                "port": 53
+              },
+              {
+                "protocol": "TCP",
+                "port": 53
+              }
+            ]
+          },
+          {
+            "to": [
+              {
+                "podSelector": {
+                  "matchLabels": {
+                    "app.kubernetes.io/name": "hermes-jobs"
+                  }
+                }
+              }
+            ],
+            "ports": [
+              {
+                "protocol": "TCP",
+                "port": 9118
+              }
+            ]
+          },
+          {
+            "to": [
+              {
+                "ipBlock": {
+                  "cidr": "0.0.0.0/0",
+                  "except": [
+                    "10.0.0.0/8",
+                    "172.16.0.0/12",
+                    "192.168.0.0/16",
+                    "169.254.0.0/16",
+                    "127.0.0.0/8",
+                    "66.11.126.176/28",
+                    "224.0.0.0/4"
+                  ]
+                }
+              }
+            ],
+            "ports": [
+              {
+                "protocol": "TCP",
+                "port": 587
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "networking.k8s.io/v1",
+      "kind": "NetworkPolicy",
+      "metadata": {
+        "name": "hermes-jobs-from-email",
+        "namespace": "hermes"
+      },
+      "spec": {
+        "podSelector": {
+          "matchLabels": {
+            "app.kubernetes.io/name": "hermes-jobs"
+          }
+        },
+        "policyTypes": [
+          "Ingress"
+        ],
+        "ingress": [
+          {
+            "from": [
+              {
+                "podSelector": {
+                  "matchLabels": {
+                    "app.kubernetes.io/name": "hermes-jobs-email"
+                  }
+                }
+              }
+            ],
+            "ports": [
+              {
+                "protocol": "TCP",
+                "port": 9118
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}
