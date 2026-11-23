@@ -115,8 +115,9 @@
                     },
                     "volumeMounts": [
                       {
+                        "mountPath": "/data",
                         "name": "data",
-                        "mountPath": "/data"
+                        "subPath": "hermes-home/job-worker-data"
                       },
                       {
                         "name": "tmp",

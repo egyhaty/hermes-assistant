@@ -37,3 +37,12 @@ class MailTests(unittest.TestCase):
     self.assertEqual(first['status'],'uncertain' if fail else 'accepted');self.assertEqual(second['status'],'already_processed');self.assertEqual(Mail.calls,1)
     saved=sqlite3.connect(Path(tmp)/'email-report-delivery.sqlite3').execute('SELECT error FROM deliveries').fetchone()[0]
     self.assertNotIn('fake-test-only',saved)
+
+class ReportMountTests(unittest.TestCase):
+ def test_reporter_reads_exact_worker_data_subdirectory(self):
+  root=Path(__file__).resolve().parents[1]
+  worker=next(x for x in json.loads((root/'deploy/jobs.json').read_text())['items'] if x['kind']=='Deployment' and x['metadata']['name']=='hermes-jobs')
+  report=next(x for x in json.loads((root/'deploy/jobs-reports.json').read_text())['items'] if x['kind']=='CronJob')
+  original=next(m for m in worker['spec']['template']['spec']['containers'][0]['volumeMounts'] if m['name']=='data')
+  actual=next(m for m in report['spec']['jobTemplate']['spec']['template']['spec']['containers'][0]['volumeMounts'] if m['name']=='data')
+  self.assertEqual(actual,original)
