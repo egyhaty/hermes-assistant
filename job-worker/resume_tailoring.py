@@ -28,7 +28,7 @@ def tailor(source, job):
     def ranked(values): return sorted(values, key=score, reverse=True)
     # Every sentence remains verbatim from the reviewed source. Keep ALL bullets
     # and all context/qualifiers, especially project-vs-employer distinctions.
-    result['summary'] = ranked(result['summary'])
+    result['summary'] = result['summary'][:1] + ranked(result['summary'][1:])
     result['skills'] = ranked(result['skills'])
     for role in result['experience'][:2]:
         role['bullets'] = ranked(role['bullets'])
