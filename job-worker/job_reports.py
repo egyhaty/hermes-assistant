@@ -25,7 +25,10 @@ def summary(journal):
             audits += 1
     return {'timezone': 'Asia/Dubai', 'counts': dict(counts), 'confirmed_with_fit_audit': audits,
             'daily': sorted(daily.values(), key=lambda row: row['date'], reverse=True)[:30],
-            'runs': journal.run_history()}
+            'runs': journal.run_history(),
+            'cv_variants': [{'company': r['job'].get('company', ''), 'title': r['job'].get('title', ''),
+                             'status': r['status'], **r['job']['resume_tailoring']}
+                            for r in records if r['job'].get('resume_tailoring')][-100:]}
 
 
 def safe_cell(value):
@@ -35,12 +38,13 @@ def safe_cell(value):
 
 def applications_csv(journal):
     out = io.StringIO(); writer = csv.writer(out)
-    writer.writerow(['Updated (Dubai)', 'Site', 'Track', 'Company', 'Role', 'Location', 'Status', 'Attempts', 'Reason', 'Fit audit', 'URL'])
+    writer.writerow(['Updated (Dubai)', 'Site', 'Track', 'Company', 'Role', 'Location', 'Status', 'Attempts', 'Reason', 'Fit audit', 'CV variant', 'CV delivery', 'URL'])
     for row in journal.report_records():
         job = row['job']
         writer.writerow([safe_cell(value) for value in (dubai_time(row['updated']), row['source'], job.get('track', 'devops_uae'), job.get('company', ''), job.get('title', ''),
                          job.get('location', ''), row['status'], row['attempts'], row['reason'],
-                         job.get('screening_audit', {}).get('reason', ''), row['url'])])
+                         job.get('screening_audit', {}).get('reason', ''), job.get('resume_tailoring', {}).get('artifact', ''),
+                         job.get('resume_tailoring', {}).get('delivery', 'profile_cv'), row['url'])])
     return '\ufeff' + out.getvalue()
 
 

@@ -267,6 +267,18 @@ async def reports_handle(request):
   text=await asyncio.to_thread(applications_csv if request.path.endswith('applications.csv') else runs_csv,journal)
   name=request.path.rsplit('/',1)[1]
   return web.Response(text=text,content_type='text/csv',headers={'Content-Disposition':'attachment; filename="hermes-'+name+'"','Cache-Control':'no-store'})
+ if request.path=='/jobs/reports/cv':
+  key=request.query.get('id','')
+  if not re.fullmatch(r'[a-f0-9]{64}',key):raise web.HTTPNotFound()
+  root=Path('/data/tailored-resumes');p=root/key/'resume.pdf'
+  if not p.is_file() or p.is_symlink() or p.resolve().parent.parent!=root.resolve():raise web.HTTPNotFound()
+  return web.FileResponse(p,headers={'Content-Disposition':'attachment; filename="Karem_DevOps_'+key[:12]+'.pdf"','Cache-Control':'no-store'})
+ if request.path=='/jobs/reports/cv-source':
+  track=request.query.get('track','devops_uae')
+  if track not in ('devops_uae','hosting_remote'):raise web.HTTPNotFound()
+  p=Path('/data/cv-source')/(track+'.json')
+  if not p.is_file() or p.is_symlink():raise web.HTTPNotFound()
+  return web.FileResponse(p,headers={'Content-Disposition':'attachment; filename="'+track+'-cv-source.json"','Cache-Control':'no-store'})
  if request.path=='/jobs/reports/log':
   run=request.query.get('run','')
   if not re.fullmatch(r'[0-9a-f]{32}',run):raise web.HTTPNotFound()

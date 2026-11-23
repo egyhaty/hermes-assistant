@@ -184,7 +184,14 @@ def run(check=False, execute=False, terms=None, source='naukrigulf', track='devo
                 decision = screen(config, {k: job[k] for k in ('title', 'company', 'head', 'description')}, scope=track)
                 job['screening'] = dict(decision, provider=os.environ.get('JOB_SCREENING_MODE', 'local'))
                 reason = decision['reason'] + (' Gaps: ' + '; '.join(decision['gaps']) if decision['gaps'] else '')
-                journal.review(job, digest, decision['eligible'], reason)
+                application_resume, application_digest = resume, digest
+                if decision['eligible'] and execute and os.environ.get('JOB_CV_TAILORING') == '1':
+                    from resume_tailoring import prepare
+                    variant, metadata = prepare(DATA, job, resume, track)
+                    job['resume_tailoring'] = metadata
+                    if source == 'linkedin':
+                        application_resume, application_digest = variant, metadata['sha256']
+                journal.review(job, application_digest, decision['eligible'], reason)
                 known.add(job['url'])
                 if not decision['eligible']:
                     state['skipped'] += 1
@@ -192,7 +199,7 @@ def run(check=False, execute=False, terms=None, source='naukrigulf', track='devo
                     # Recheck approval and CV identity immediately before the submit action.
                     if profile_ready_error() or hashlib.sha256(resume.read_bytes()).hexdigest() != digest:
                         raise RuntimeError('Application profile changed during the run')
-                    outcome = submit(page, job, journal, digest) if source == 'naukrigulf' else submit(page, job, journal, digest, config, resume)
+                    outcome = submit(page, job, journal, digest) if source == 'naukrigulf' else submit(page, job, journal, application_digest, config, application_resume)
                     if outcome in state:
                         state[outcome] += 1
                     print('Application outcome: ' + json.dumps({'title': job['title'], 'company': job['company'], 'status': outcome}), flush=True)

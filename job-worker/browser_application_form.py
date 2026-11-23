@@ -38,7 +38,8 @@ def complete_form(page, config, resume, digest, allow_profile_cv=False):
     """Never completes unknown questions or counts a click as a confirmed submission."""
     resume = Path(resume)
     allowed = {DATA / 'resume.pdf', DATA / 'resumes/Karem_Elbostany_Hosting_Support_CV.pdf'}
-    if resume not in allowed or resume.is_symlink() or not resume.is_file() or not resume.read_bytes().startswith(b'%PDF-') or hashlib.sha256(resume.read_bytes()).hexdigest() != digest:
+    from resume_tailoring import verified_variant
+    if (resume not in allowed and not verified_variant(DATA, resume, digest)) or resume.is_symlink() or not resume.is_file() or not resume.read_bytes().startswith(b'%PDF-') or hashlib.sha256(resume.read_bytes()).hexdigest() != digest:
         raise ValueError('Selected verified resume is unavailable')
     aliases = DATA / 'application-resumes'
     aliases.mkdir(exist_ok=True, mode=0o700)
